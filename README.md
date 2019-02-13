@@ -8,10 +8,10 @@ Hunter: Wrap pose-warp GAN into function: (image and gaussian poses in, generate
 
 Kevin: Wrap function for OpenPose outputs: (image in, gaussians out)
 
-To help with loading in the python API,
-Install openpose to project directory, ie. project structure:
-openpose
-Python code
+To help with loading in the python API,  
+Install openpose to project directory, ie. project structure:  
+openpose  
+Python code  
 
 
 
