@@ -8,6 +8,14 @@ Hunter: Wrap pose-warp GAN into function: (image and gaussian poses in, generate
 
 Kevin: Wrap function for OpenPose outputs: (image in, gaussians out)
 
+To help with loading in the python API,
+Install openpose to project directory, ie. project structure:
+openpose
+Python code
+
+
+
+Might be useful for install:
 It looks like you have to turn on Python (off by default)
 cmake .. -DBUILD_PYTHON=ON
 
