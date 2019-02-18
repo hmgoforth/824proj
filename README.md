@@ -6,7 +6,7 @@ Jen: Wrap face GAN module: (image and gaussian/openpose poses in, generated face
 
 Hunter: Wrap pose-warp GAN into function: (image and gaussian poses in, generated output out)
 
-	See posewarp/code/posewarp_test.py and posewarp_wrapper.py
+*See posewarp/code/posewarp_test.py and posewarp_wrapper.py
 
 Kevin: Wrap function for OpenPose outputs: (image in, gaussians out)
 
