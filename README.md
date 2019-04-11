@@ -1,5 +1,4 @@
 # 824proj
-Gdrive Folder: https://drive.google.com/drive/u/1/folders/1qVCHkzaXP1YNf2MU3zw_oAqX8ypsc4Dp
 
 2/12 meeting:
 
@@ -25,3 +24,7 @@ cmake .. -DBUILD_PYTHON=ON
 or with python2
 
 cmake .. -DBUILD_PYTHON=ON -DPYTHON_EXECUTABLE=/usr/bin/python2.7 -DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython2.7m.so
+
+## Running baseline
+
+See oneshot_test.sh to run baseline. Change values for source and template image as desired. When done, 3 figures will be opened with matplotlib: source, target, and source in target's pose.
