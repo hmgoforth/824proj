@@ -25,9 +25,9 @@ def disp_data(d,gray=False):
 def test(gpu_id):
     params = param.get_general_params()
 
-    test_feed = data_generation.create_feed(params, params['data_dir'], 'train')
+    test_feed = data_generation.create_feed(params, params['data_dir'], 'test')
 
-    pw = posewarp_wrapper.wrapper()
+    pw = posewarp_wrapper.wrapper(gpu_id=gpu_id)
 
     n_iters = 10000
 

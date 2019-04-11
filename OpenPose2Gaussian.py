@@ -3,6 +3,7 @@ import cv2
 import os
 from sys import platform
 import argparse
+from pdb import set_trace as st
 
 # Import Openpose (Windows/Ubuntu/OSX)
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -61,6 +62,7 @@ opWrapper.start()
 datum = op.Datum()
 imageToProcess = cv2.imread(args[0].image_path)
 datum.cvInputData = imageToProcess
+
 opWrapper.emplaceAndPop([datum])
 
 # Process outputs
@@ -81,6 +83,7 @@ combined = cv2.addWeighted(outputImageF, 0.5, heatmap, 0.5, 0)
 #key = cv2.waitKey(-1)
 #if key == 27:
 #    break
-cv2.imwrite("./images/output.png",combined)
+
+cv2.imwrite("output.png",combined)
 counter += 1
 counter = counter % num_maps

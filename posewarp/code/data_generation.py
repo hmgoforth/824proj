@@ -6,7 +6,95 @@ import scipy.io as sio
 import glob
 from pdb import set_trace as st
 import matplotlib.pyplot as plt
+from param import get_general_params
 
+def format_network_input(param, I0, I1, joints0, joints1):
+    # in: param, source_image, source_joints (14x2), target_joints (14x2)
+    # out: list[image_src, pose_src, pose_tgt, mask_src, trans]
+    #   image_src: batch x 256 x 256 x 3 (rgb images)
+    #   pose_src: batch x 128 x 128 x 14 (gaussian bumps [0,1])
+    #   pose_tgt: batch x 128 x 128 x 14 (gaussian bumps [0,1])
+    #   mask_src: batch x 256 x 256 x 11 (?)
+    #   trans: batch x 2 x 3 x 11 (affine joint transformations, src to tgt)\
+
+    img_width = param['IMG_WIDTH']
+    img_height = param['IMG_HEIGHT']
+    pose_dn = param['posemap_downsample']
+    sigma_joint = param['sigma_joint']
+    n_joints = param['n_joints']
+    scale_factor = param['obj_scale_factor']
+    limbs = param['limbs']
+    n_limbs = param['n_limbs']
+
+    x_src = np.zeros((img_height, img_width, 3))
+    x_mask_src = np.zeros((img_height, img_width, n_limbs + 1))
+    x_pose_src = np.zeros((int(img_height / pose_dn), int(img_width / pose_dn), n_joints))
+    x_pose_tgt = np.zeros((int(img_height / pose_dn), int(img_width / pose_dn), n_joints))
+    x_trans = np.zeros((2, 3, n_limbs + 1))
+    x_posevec_src = np.zeros((n_joints * 2))
+    x_posevec_tgt = np.zeros((n_joints * 2))
+    y = np.zeros((img_height, img_width, 3))
+
+    bbox0 = bbox_from_joints(joints0)
+    bbox1 = bbox_from_joints(joints1)
+
+    scale0 = get_person_scale(joints0)
+    scale1 = get_person_scale(joints1)
+
+    pos0 = pos_from_bbox(bbox0)
+    pos1 = pos_from_bbox(bbox1)
+
+    if scale0 > scale1:
+        scale = scale_factor / scale0
+    else:
+        scale = scale_factor / scale1
+
+    pos = (pos0 + pos1) / 2.0
+
+    I0, joints0 = center_and_scale_image(I0, img_width, img_height, pos, scale, joints0)
+    I1, joints1 = center_and_scale_image(I1, img_width, img_height, pos, scale, joints1)
+
+    I0 = (I0 / 255.0 - 0.5) * 2.0
+    I1 = (I1 / 255.0 - 0.5) * 2.0
+
+    posemap0 = make_joint_heatmaps(img_height, img_width, joints0, sigma_joint, pose_dn)
+    posemap1 = make_joint_heatmaps(img_height, img_width, joints1, sigma_joint, pose_dn)
+
+    src_limb_masks = make_limb_masks(limbs, joints0, img_width, img_height)
+    src_bg_mask = np.expand_dims(1.0 - np.amax(src_limb_masks, axis=2), 2)
+    src_masks = np.log(np.concatenate((src_bg_mask, src_limb_masks), axis=2) + 1e-10)
+
+    x_src[:, :, :] = I0
+    x_pose_src[:, :, :] = posemap0
+    x_pose_tgt[:, :, :] = posemap1
+    x_mask_src[:, :, :] = src_masks
+    x_trans[:, :, 0] = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+    x_trans[:, :, 1:] = get_limb_transforms(limbs, joints0, joints1)
+
+    x_posevec_src[:] = joints0.flatten()
+    x_posevec_tgt[:] = joints1.flatten()
+
+    y[:, :, :] = I1
+
+    out = [x_src, x_pose_src, x_pose_tgt, x_mask_src, x_trans]
+
+    return out, y
+
+def pos_from_bbox(bbox):
+    pos = np.zeros(2)
+    pos[0] = (bbox[0] + bbox[2] / 2.0)
+    pos[1] = (bbox[1] + bbox[3] / 2.0)
+    return pos
+
+def bbox_from_joints(joints):
+    # bbox: [x,y,width,height]
+    # x,y at top left corner
+    bbox = np.zeros(4)
+    bbox[0] = min(joints[:,0])
+    bbox[1] = min(joints[:,1])
+    bbox[2] = max(joints[:,0]) - min(joints[:,0])
+    bbox[3] = max(joints[:,1]) - min(joints[:,1])
+    return bbox
 
 def make_vid_info_list(data_dir):
     vids = glob.glob(data_dir + '/frames/*')
@@ -45,6 +133,7 @@ def read_frame(vid_name, frame_num, box, x):
     img = cv2.imread(img_name)
     joints = x[:, :, frame_num] - 1.0
     box_frame = box[frame_num, :]
+    st()
     scale = get_person_scale(joints)
     pos = np.zeros(2)
     pos[0] = (box_frame[0] + box_frame[2] / 2.0)

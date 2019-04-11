@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 import networks
 import param
 import os
@@ -7,9 +8,8 @@ from pdb import set_trace as st
 import matplotlib.pyplot as plt
 
 class wrapper:
-    def __init__(self, model_path='../models/vgg+gan_5000.h5', gpu_id='0'):
+    def __init__(self, model_path='../models/vgg+gan_5000.h5'):
         params = param.get_general_params()
-        os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         config.allow_soft_placement = True
@@ -31,5 +31,12 @@ class wrapper:
         # plt.title('mask')
         # plt.show()
         # plot pose_src: plt.imshow(np.sum(x[1][0,:,:,:],axis=2);plt.show()
+
+        if len(x[0].shape) == 3: # need to add batch dim
+            x[0] = np.expand_dims(x[0], 0)
+            x[1] = np.expand_dims(x[1], 0)
+            x[2] = np.expand_dims(x[2], 0)
+            x[3] = np.expand_dims(x[3], 0)
+            x[4] = np.expand_dims(x[4], 0)
 
         return self.generator.predict(x)
