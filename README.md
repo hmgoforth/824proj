@@ -1,4 +1,5 @@
 # 824proj
+Gdrive Folder: https://drive.google.com/drive/u/1/folders/1qVCHkzaXP1YNf2MU3zw_oAqX8ypsc4Dp
 
 2/12 meeting:
 
