@@ -4,3 +4,4 @@ openpose/
 .vscode/
 images/
 todo.txt
+backgroundInpainting/pretrainedModel.pth
