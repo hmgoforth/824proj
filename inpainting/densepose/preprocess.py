@@ -38,7 +38,6 @@ c2_utils.import_detectron_ops()
 # thread safe and causes unwanted GPU memory allocations.
 cv2.ocl.setUseOpenCL(False)
 
-
 def parse_args():
     parser = argparse.ArgumentParser(description='preprocess IUV for deepfashion')
     parser.add_argument(

@@ -3,10 +3,6 @@ Given source image and target image/dir, run DensePose to get IUV for source and
 Save IUV out
 '''
 
-'''
-Generate DensePose IUV for all training images in f
-'''
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -59,12 +55,26 @@ def parse_args():
     parser.add_argument(
         '--target-ext',
         help='extension of target images if directory was provided',
-        default='.jpg'
+        default='.jpg',
         type=str
     )
     parser.add_argument(
         '--outdir',
         help='where to save output IUV',
+        type=str
+    )
+    parser.add_argument(
+        '--cfg',
+        dest='cfg',
+        help='cfg model file (/path/to/model_config.yaml)',
+        default='configs/DensePose_ResNet101_FPN_s1x-e2e.yaml',
+        type=str
+    )
+    parser.add_argument(
+        '--wts',
+        dest='weights',
+        help='weights model file (/path/to/model_weights.pkl)',
+        default='https://dl.fbaipublicfiles.com/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl',
         type=str
     )
     return parser.parse_args()
@@ -101,7 +111,9 @@ def extract_and_save_iuv(image_path, outdir, model, infer_engine):
 	iuv = extract_iuv(image_path, model, infer_engine)
 	filename = os.path.splitext(os.path.basename(image_path))[0]
 	iuv_path = os.path.join(outdir, filename + '_IUV.npy')
+	iuv_image_path = os.path.join(outdir, filename + '_IUV.png')
 	np.save(iuv_path, iuv)
+	cv2.imwrite(iuv_image_path, iuv)
 
 def main(args):
     logger = logging.getLogger(__name__)
