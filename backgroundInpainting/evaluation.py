@@ -31,6 +31,6 @@ def evaluateCustom(model, dataset, device, filename):
     output_comp = mask * image + (1 - mask) * output
 
     grid = make_grid(
-        torch.cat((unnormalize(image), mask, unnormalize(output),
+        torch.cat((unnormalize(image), mask, unnormalize((1 - mask) * output),
                    unnormalize(output_comp), unnormalize(gt)), dim=0))
     save_image(grid, filename)

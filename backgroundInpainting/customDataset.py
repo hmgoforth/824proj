@@ -26,13 +26,15 @@ class customData(torch.utils.data.Dataset):
         mask = mask[:,:,0] > 1.
         mask = ndimage.binary_dilation(mask, iterations=5).astype(np.float32)
         mask = mask == 0.
-        mask = Image.fromarray(mask.astype(np.float32) * 255).convert('1')
-        mask = self.mask_transform(mask)
+        mask = mask.astype(np.float32)
+        mask = np.array([mask, mask, mask], dtype=np.float32)
+        #pdb.set_trace()
+        mask = transforms.ToPILImage()(torch.from_numpy(mask))
+        #mask = Image.fromarray(mask.astype(np.float32) * 255)#.convert('1')
+        #pdb.set_trace()
+        mask = self.mask_transform(mask.convert('RGB'))
         
-        masked_im = gt_img
-        masked_im[0,:,:] *= mask
-        masked_im[1,:,:] *= mask
-        masked_im[2,:,:] *= mask
+        masked_im = gt_img * mask
         # finalMask = torch.zeros_like(mask, dtype=torch.float32)
         # background = mask == 0.
         # finalMask = finalMask.masked_fill_(background, 1.0)
