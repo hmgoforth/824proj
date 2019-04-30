@@ -89,9 +89,7 @@ class Encode(nn.Module):
         encoding = self.encode_blocks(image)
         return encoding
 
-
-
-class GenerativeModel(nn.Module):
+class UNet(nn.Module):
     def __init__(self, img_shape=(256, 256, 9)):
         super().__init__()
         #Input is 256x256x9 of DensePose result
