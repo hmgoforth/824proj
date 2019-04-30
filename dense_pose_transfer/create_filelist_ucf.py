@@ -32,7 +32,6 @@ def parse_args():
 
 def main(args):
     filelist = []
-    val 
     for root, dirs, files in os.walk(args.ucf):
         for file in files:
             if file.endswith("IUV.png"): # only look for valid files
