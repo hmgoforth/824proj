@@ -12,7 +12,48 @@ import utils
 
 ''' #################
 
-BEGIN TOP LEVEL NETWORK
+BEGIN TOP LEVEL GAN NETWORK
+
+''' #################
+
+class DensePoseGAN(nn.Module):
+    '''
+    Combines DensePoseTransferNet, and Discriminator
+    '''
+    def __init__(self):
+        # initialize predictive module
+
+        # initialize Generator Network
+        self.generator = DensePoseTransferNet()
+
+        # initialize Discriminator Network
+        self.discriminator = Discriminator()
+
+
+    def forward(self, source_im, source_iuv, target_iuv):
+        # source_im: B x (R, G, B) x 256 x 256 float [0, 1]
+        # source_iuv: B x (I, U, V) x 256 x 256
+        # target_iuv: B x (I, U, V) x 256 x 256
+
+        # Generate predicted image
+        predictive_result, source_body_mask, target_body_mask = self.generator(source_im, source_iuv, target_iuv)
+
+        # Classify predicted image as either from distribution or not
+        classification = self.discriminator(predictive_result, source_body_mask, target_body_mask)
+
+        return predictive_result, classification 
+        # predictive_result  B x (R, G, B) x 256 x 256
+        # classification:    B x 1
+
+''' #################
+
+END TOP LEVEL GAN NETWORK
+
+''' #################
+
+''' #################
+
+BEGIN TOP LEVEL GENERATIVE NETWORK
 
 ''' #################
 
@@ -46,22 +87,26 @@ class DensePoseTransferNet(nn.Module):
 
         # background inpainting
         source_body_mask, source_part_mask = utils.get_body_and_part_mask_from_iuv(source_iuv)
+        target_body_mask, target_part_mask = utils.get_body_and_part_mask_from_iuv(target_iuv)
 
         # KEVIN: INPUT MASKS SHOULD BE SCALED TO 255 OR 1?
-        inpainted_bg = self.bg_inpainting(source_im, source_body_mask, source_part_mask)
+        # Answer: Masks should be float32's from 0 to 1
+        inpainted_bg = self.bg_inpainting(source_im, source_part_mask, target_part_mask)
 
         # blending
         blending_result = self.blending_module(predictive_result, warping_module)
 
         # final result
-        target_body_mask, _ = utils.get_body_and_part_mask_from_iuv(target_iuv)
         final_result = utils.combine_foreground_background(blending_result, target_body_mask, inpainted_bg)
 
-        return final_result # B x (R, G, B) x 256 x 256
+        return final_result, source_body_mask, target_body_mask
+        # final_result:     B x (R, G, B) x 256 x 256
+        # source_body_mask: B x 24 x 256 x 256
+        # target_body_mask: B x 24 x 256 x 256
 
 ''' #################
 
-END TOP LEVEL NETWORK
+END TOP LEVEL GENERATIVE NETWORK
 
 ''' #################
 
