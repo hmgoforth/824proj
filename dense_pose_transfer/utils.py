@@ -21,7 +21,7 @@ def images_from_texture_and_iuv(texture_map, iuv):
     # output images: views x (R, G, B) x H x W
 
     views = iuv.shape[0]
-    images = torch.zeros(views, 3, 256, 256).view(-1)
+    images = torch.zeros(views, 3, 256, 256).view(-1).cuda()
 
     part_ind = (iuv[:, 0:1, :, :].repeat(1, 3, 1, 1).contiguous().view(-1)).long() - 1
     row_ind = (iuv[:, 1:2, :, :].repeat(1, 3, 1, 1).contiguous().view(-1)).long()
@@ -45,7 +45,7 @@ def images_from_texture_and_iuv_batch(texture_map, iuv):
     # output images: B x (R, G, B) x H x W
 
     B = iuv.shape[0]
-    images = torch.zeros(B, 3, 256, 256).view(-1)
+    images = torch.zeros(B, 3, 256, 256).view(-1).cuda()
 
     part_ind = (iuv[:, 0:1, :, :].repeat(1, 3, 1, 1).contiguous().view(-1)).long() - 1
     row_ind = (iuv[:, 1:2, :, :].repeat(1, 3, 1, 1).contiguous().view(-1)).long()
@@ -113,13 +113,13 @@ def get_body_and_part_mask_from_iuv(iuv):
     # output:
     #     body mask: torch, B x 1 x 256 x 256 binary mask of body shape
     #     part mask: torch, B x 24 x 256 x 256 binary mask of parts
-
     B, _, H, W = iuv.shape
 
-    body_mask = iuv[:, 0, :, :] > 0
+    body_mask = iuv[:, 0:1, :, :] > 0
 
-    part_mask = torch.arange(1,25).unsqueeze(0).unsqueeze(2).unsqueeze(3).repeat(B, 1, H, W)
+    part_mask = torch.arange(1,25).unsqueeze(0).unsqueeze(2).unsqueeze(3).repeat(B, 1, H, W).float().cuda()
     part_mask = part_mask == iuv[:, 0:1, :, :].repeat(1, 24, 1, 1)
+    part_mask = part_mask.cuda()
 
     return body_mask, part_mask
 

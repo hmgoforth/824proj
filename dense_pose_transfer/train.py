@@ -28,11 +28,12 @@ class ExperimentRunner(object):
         self.vgg_loss_network = VGG19FeatureNet() #Frozen weights, pretrained
 
         # Network hyperparameters
-        self.gan_lr = 1e-4
-        self.disc_lr = 1e-4
+        self.gan_lr = 1.e-4
+        self.disc_lr = 1.e-4
         self.disc_lambda = 0.1
-        self.optimizer = torch.optim.SGD([ {'params': self.gan.generator.parameters(), 'lr': self.gan_lr},
-                                           {'params': self.gan.discriminator.parameters(), 'lr': self.disc_lr}
+        self.optimizerG = torch.optim.SGD([ {'params': self.gan.generator.parameters(), 'lr': self.gan_lr}
+                                         ], momentum=0.9)
+        self.optimizerD = torch.optim.SGD([ {'params': self.gan.discriminator.parameters(), 'lr': self.disc_lr}
                                          ], momentum=0.9)
         # Network losses
         self.BCECriterion = nn.BCEWithLogitsLoss().cuda()
@@ -69,20 +70,20 @@ class ExperimentRunner(object):
         """
         VGGLoss + GAN loss
         """
-        self.optimizer.zero_grad()
+        self.optimizerG.zero_grad()
         loss = self.disc_lambda * self.BCECriterion(y_pred, y_gt) + self.VGGLoss(pred_img, gt_img)
         loss.backward()
-        self.optimizer.step()
+        self.optimizerG.step()
         return loss
     
     def _optimizeDiscriminator(self, y_pred, y_gt):
         """
         Discriminator Loss
         """
-        self.optimizer.zero_grad()
+        self.optimizerD.zero_grad()
         loss = self.BCECriterion(y_pred, y_gt)
-        loss.backward()
-        self.optimizer.step()
+        loss.backward(retain_graph=True)
+        self.optimizerD.step()
         return loss
     
     def _adjust_learning_rate(self, epoch):
@@ -130,6 +131,7 @@ class ExperimentRunner(object):
         return
 
     def train(self):
+        #torch.autograd.set_detect_anomaly(True)
         """
         Main training loop
         Helpful URL: https://github.com/balakg/posewarp-cvpr2018/blob/master/code/posewarp_gan_train.py
@@ -155,40 +157,40 @@ class ExperimentRunner(object):
                 
                 # ============
                 # Run predictive GAN on source image
-                predicted_answer, classification_src = self.gan(src_img, src_iuv, target_iuv, use_gt=False)
+                generated_img, classification_src = self.gan(src_img, src_iuv, target_iuv, use_gt=False)
                 # Run predictive GAN on target image
                 _ , classification_tgt = self.gan(target_img, src_iuv, target_iuv, use_gt=True)
                 # Create discriminator groundtruth
                 # For src, we create zeros
                 # For tgt, we create ones
-                disc_gt_src = torch.zeros(classification_src.shape[0], 1, dtype=torch.float32)
-                disc_gt_tgt = torch.ones(classification_src.shape[0], 1, dtype=torch.float32)
+                disc_gt_src = torch.zeros(classification_src.shape[0], 1, dtype=torch.float32).cuda()
+                disc_gt_tgt = torch.ones(classification_src.shape[0], 1, dtype=torch.float32).cuda()
                 disc_gt = torch.cat((disc_gt_src, disc_gt_tgt), dim=0).cuda(async=True)
 
                 classification_all = torch.cat((classification_src, classification_tgt) , dim=0)
                 # Train Discriminator network
                 disc_loss = self._optimizeDiscriminator(classification_all, disc_gt)
-                disc_losses.update(disc_loss.data[0], disc_gt.shape[0])
+                disc_losses.update(disc_loss.item(), disc_gt.shape[0])
                 disc_acc = 100.0 * torch.mean( ( torch.round(F.softmax(classification_all, dim=1)) == disc_gt ).float() )
 
-                train_disc_accuracies.update(disc_acc.data[0], disc_gt.shape[0])
+                train_disc_accuracies.update(disc_acc.item(), disc_gt.shape[0])
 
                 print("Epoch: {}, Batch {}/{} has Discriminator loss {}, and acc {}".format(epoch, batch_id, num_batches, disc_losses.avg, train_disc_accuracies.avg))
                 # Start training GAN first for several iterations
                 if current_step < self.start_disc_iters:
-                    print("Discriminator training only: {}/{}\n").format(current_step,self.start_disc_iters)
+                    print("Discriminator training only: {}/{}\n".format(current_step,self.start_disc_iters))
                     continue
                
                 # ============
                 # Optimize the GAN
                 # Note that now we use disc_gt_tgt which are 1's
-                tot_loss = self._optimizeGAN(predicted_answer, target_img, classification_src, disc_gt_tgt)
-                tot_losses.update(tot_loss.data[0], disc_gt_tgt.shape[0])
+                tot_loss = self._optimizeGAN(generated_img, target_img, classification_src, disc_gt_tgt)
+                tot_losses.update(tot_loss.item(), disc_gt_tgt.shape[0])
 
                 acc = 100.0 * torch.mean( ( torch.round(F.softmax(classification_src, dim=1)) == disc_gt_tgt ).float() )
 
-                tot_losses.update(tot_loss.data[0], disc_gt_tgt.shape[0])
-                train_accuracies.update(acc.data[0], disc_gt_tgt.shape[0])
+                tot_losses.update(tot_loss.item(), disc_gt_tgt.shape[0])
+                train_accuracies.update(acc.item(), disc_gt_tgt.shape[0])
 
                 # Not adjusting learning rate currently
                 # if epoch % 100 == 99:
@@ -199,8 +201,9 @@ class ExperimentRunner(object):
                 if current_step % self.log_freq == 0:
                     print("Epoch: {}, Batch {}/{} has loss {}, and acc {}".format(epoch, batch_id, num_batches, tot_losses.avg, train_accuracies.avg))
                     # TODO: you probably want to plot something here
-                    self.txwriter.add_scalar('train/loss', tot_losses.avg, current_step)
-                    self.txwriter.add_scalar('train/acc', train_accuracies.avg, current_step)
+                    self.txwriter.add_scalar('train/discriminator_loss', disc_losses.avg, current_step)
+                    self.txwriter.add_scalar('train/total_loss', tot_losses.avg, current_step)
+                    self.txwriter.add_scalar('train/discriminator_acc', train_accuracies.avg, current_step)
                 """
                 TODO : Test accuracies
                 if current_step % self.test_freq == 0:#self._test_freq-1:
@@ -243,8 +246,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run Densepose Transfer Network.')
     parser.add_argument('--train_dataset_path', type=str, default='./ucf_train_list.txt')
     parser.add_argument('--test_dataset_path', type=str, default='./ucf_test_list.txt')
-    parser.add_argument('--train_batch_size', type=int, default=5)
-    parser.add_argument('--test_batch_size', type=int, default=5)
+    parser.add_argument('--train_batch_size', type=int, default=2)
+    parser.add_argument('--test_batch_size', type=int, default=2)
     parser.add_argument('--num_epochs', type=int, default=100)
     parser.add_argument('--num_data_loader_workers', type=int, default=10)
     parser.add_argument('--model_save_dir', type=str, default='./models')

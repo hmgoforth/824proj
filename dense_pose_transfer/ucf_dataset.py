@@ -48,8 +48,8 @@ class UCFDensePoseTransferDataset(Dataset):
         target_im = torch.from_numpy(io.imread(target_basepath + '.png')).permute(2,0,1).float() / 255
         target_iuv = torch.flip(torch.from_numpy(io.imread(target_basepath + '_IUV.png')).permute(2,0,1).float(),dims=[0])
 
-        print('item: ' + item_basepath)
-        print('target: ' + target_basepath)
+        #print('item: ' + item_basepath)
+        #print('target: ' + target_basepath)
 
         ret = {'im':im,
                'im_iuv':im_iuv,

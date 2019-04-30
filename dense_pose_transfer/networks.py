@@ -38,14 +38,14 @@ class DensePoseGAN(nn.Module):
         # Generate predicted image
         # If use_gt, we use the source image as the predictive result.  This is for training the Disc Network
         if use_gt:
-            source_body_mask, _ = utils.get_body_and_part_mask_from_iuv(source_iuv)
-            target_body_mask, _ = utils.get_body_and_part_mask_from_iuv(target_iuv)
+            _ , source_part_mask = utils.get_body_and_part_mask_from_iuv(source_iuv)
+            _ , target_part_mask = utils.get_body_and_part_mask_from_iuv(target_iuv)
             predictive_result = source_im
         else:
-            predictive_result, source_body_mask, target_body_mask = self.generator(source_im, source_iuv, target_iuv)
+            predictive_result, source_part_mask, target_part_mask = self.generator(source_im, source_iuv, target_iuv)
 
         # Classify predicted image as either from distribution or not
-        classification = self.discriminator(predictive_result, source_body_mask, target_body_mask)
+        classification = self.discriminator(predictive_result, source_part_mask.float(), target_part_mask.float())
 
         return predictive_result, classification
         # predictive_result  B x (R, G, B) x 256 x 256
@@ -97,15 +97,15 @@ class DensePoseTransferNet(nn.Module):
 
         # KEVIN: INPUT MASKS SHOULD BE SCALED TO 255 OR 1?
         # Answer: Masks should be float32's from 0 to 1
-        inpainted_bg = self.bg_inpainting(source_im, source_part_mask, target_part_mask)
+        inpainted_bg = self.bg_inpainting(source_im, source_body_mask, source_part_mask)
 
         # blending
-        blending_result = self.blending_module(predictive_result, warping_module)
+        blending_result = self.blending_module(predictive_result, warping_result, target_iuv)
 
         # final result
         final_result = utils.combine_foreground_background(blending_result, target_body_mask, inpainted_bg)
 
-        return final_result, source_body_mask, target_body_mask
+        return final_result, source_part_mask, target_part_mask
         # final_result:     B x (R, G, B) x 256 x 256
         # source_body_mask: B x 24 x 256 x 256
         # target_body_mask: B x 24 x 256 x 256
@@ -222,7 +222,10 @@ class UNet(nn.Module):
         # if isinstance(img_feats, tuple):
         #     img_feats = img_feats[2]
         # text_feats = self.text_features(question_encoding)
-        x_in = torch.cat((image, mask, pose),dim=1) #256
+
+        # Input is Body mask, invert it
+        mask = mask == 0
+        x_in = torch.cat((image, mask.float(), pose.float()),dim=1) #256
         x0 = self.conv0(x_in) #256
         x1 = self.conv1(x0)
         x2 = self.conv2(x1) #128
@@ -340,7 +343,7 @@ class VGGLoss(nn.Module):
         super(VGGLoss,self).__init__()
         
     def forward(self,y_pred, y_true, lmbda=1.0):
-        vgg_loss(y_pred, y_true, lmbda=lmbda)
+        return vgg_loss(y_pred, y_true, lmbda=lmbda)
 
 
 def vgg_loss(y_pred, y_true, lmbda=1.0):
@@ -610,11 +613,14 @@ class ResidualBlock(nn.Module):
             nn.Dropout(0.4),
             nn.Conv2d(channels, num_features, 1, 1, padding=0, bias=False),
             nn.BatchNorm2d(num_features),
-            nn.ReLU(inplace=True))
+            nn.ReLU()
+        
+        )
         self.conv2 = nn.Sequential(
             nn.Conv2d(num_features, num_features, 3, 1, padding=1, bias=False),
             nn.BatchNorm2d(num_features),
-            nn.ReLU(inplace=True))
+            nn.ReLU()
+        )
         if classify:
             self.classifier = nn.Linear(num_features, num_features)
     def forward(self, input_mat):
@@ -658,11 +664,11 @@ class PredictiveModel(nn.Module):
 
         self.deconv1 = nn.Sequential(
             nn.ConvTranspose2d(256, 256, 3, stride=2, padding=1, output_padding=1),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
             nn.BatchNorm2d(256))
         self.deconv2 = nn.Sequential(
             nn.ConvTranspose2d(256, 256, 3, stride=2, padding=1, output_padding=1),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
             nn.BatchNorm2d(256))
  
         self.output = nn.Sequential(
