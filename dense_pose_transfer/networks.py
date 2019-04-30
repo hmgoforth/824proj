@@ -669,8 +669,10 @@ class PredictiveModel(nn.Module):
             nn.Tanh(),
         ) # output: B x 3 x 256 x 256
 
-    def forward(self, dense_image):
-        enc1 = self.enc_block1(dense_image) # B x 64 x 256 x 256
+        pred_input = torch.cat((source_im, source_iuv, target_iuv), 1)
+    def forward(self, source_im, source_iuv, target_iuv):
+        pred_input = torch.cat((source_im, source_iuv, target_iuv), 1)
+        enc1 = self.enc_block1(pred_input) # B x 64 x 256 x 256
         x = F.max_pool2d(enc1, 2, stride=2) # B x 64 x 128 x 128
         enc2 = self.enc_block2(x)           # B x 128 x 128 x 128
         x = F.max_pool2d(enc2, 2, stride=2) # B x 128 x 64 x 64
@@ -708,8 +710,9 @@ class Blending(nn.Module):
         self.res3 = ResidualBlock(num_features, num_features, classify=False)
         self.classify = nn.Linear(num_features, 3)
         
-    def forward(self, input_mat):
-       x1 = self.conv1(input_mat)
+    def forward(self, pred_output, warp_output, target_pose):
+       blend_input = torch.cat((pred_output, warp_output, target_pose), 1)
+       x1 = self.conv1(blend_input)
        x2 = self.conv2(x1)
        x3 = self.res1(x2)
        x4 = self.res2(x3)
