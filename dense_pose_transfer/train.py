@@ -142,7 +142,7 @@ class ExperimentRunner(object):
             tot_losses = AverageMeter()
             train_accuracies = AverageMeter()
 
-            for batch_id, batch_data in enumerate(self._train_dataset_loader):
+            for batch_id, batch_data in enumerate(self.train_dataset_loader):
                 self._model.train()  # Set the model to train mode
                 current_step = epoch * num_batches + batch_id
 
