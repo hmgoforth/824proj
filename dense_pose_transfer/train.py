@@ -155,9 +155,9 @@ class ExperimentRunner(object):
                 
                 # ============
                 # Run predictive GAN on source image
-                predicted_answer, classification_src = self.gan(src_img, source_iuv, target_iuv, use_gt=False)
+                predicted_answer, classification_src = self.gan(src_img, src_iuv, target_iuv, use_gt=False)
                 # Run predictive GAN on target image
-                _ , classification_tgt = self.gan(target_img, source_iuv, target_iuv, use_gt=True)
+                _ , classification_tgt = self.gan(target_img, src_iuv, target_iuv, use_gt=True)
                 # Create discriminator groundtruth
                 # For src, we create zeros
                 # For tgt, we create ones
