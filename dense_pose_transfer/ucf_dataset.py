@@ -11,10 +11,6 @@ import h5py
 import glob
 import os
 
-if __name__ == '__main__':
-    import sys
-    sys.path.append('../inpainting')
-
 import utils
 
 from pdb import set_trace as st

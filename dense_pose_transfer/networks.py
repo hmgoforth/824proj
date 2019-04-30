@@ -8,7 +8,68 @@ import numpy as np
 from scipy import ndimage
 import torchvision.models as M
 
+import utils
 
+''' #################
+
+BEGIN TOP LEVEL NETWORK
+
+''' #################
+
+class DensePoseTransferNet(nn.Module):
+    '''
+    Combines predictive module, warping module, and background inpainting network
+    '''
+    def __init__(self):
+        # initialize predictive module
+
+        # initialize warping module
+        self.warping_module = InpaintingAutoencoder()
+
+        # initialize background inpainting module
+        self.bg_inpainting = UNet()
+
+        # initialize blending module
+
+    def forward(self, source_im, source_iuv, target_iuv):
+        # source_im: B x (R, G, B) x 256 x 256 float [0, 1]
+        # source_iuv: B x (I, U, V) x 256 x 256
+        # target_iuv: B x (I, U, V) x 256 x 256
+
+        # predictive
+        predictive_result = self.predictive_module(source_im, source_iuv, target_iuv)
+
+        # warping
+        source_texture_map = utils.texture_from_images_and_iuv(source_im, source_iuv)
+        inpainted_source_texture_map = self.warping_module(source_texture_map)
+        warping_result = utils.images_from_texture_and_iuv_batch(inpainted_source_texture_map, source_iuv)
+
+        # background inpainting
+        source_body_mask, source_part_mask = utils.get_body_and_part_mask_from_iuv(source_iuv)
+
+        # KEVIN: INPUT MASKS SHOULD BE SCALED TO 255 OR 1?
+        inpainted_bg = self.bg_inpainting(source_im, source_body_mask, source_part_mask)
+
+        # blending
+        blending_result = self.blending_module(predictive_result, warping_module)
+
+        # final result
+        target_body_mask, _ = utils.get_body_and_part_mask_from_iuv(target_iuv)
+        final_result = utils.combine_foreground_background(blending_result, target_body_mask, inpainted_bg)
+
+        return final_result # B x (R, G, B) x 256 x 256
+
+''' #################
+
+END TOP LEVEL NETWORK
+
+''' #################
+
+''' #################
+
+BEGIN BACKGROUND INPAINTING
+
+''' #################
 
 class UNet(nn.Module):
     """
@@ -189,6 +250,18 @@ def my_conv(x_in, nf, ks=3, strides=1, activation='lrelu', name=None):
 x = unet(concatenate([bg_src, bg_src_mask]), pose_src, [64]*2 + [128]*9, [128]*4 + [64])
 """
 
+''' #################
+
+END BACKGROUND INPAINTING
+
+''' #################
+
+''' #################
+
+BEGIN LOSS FUNCTIONS
+
+''' #################
+
 def vgg_preprocess(x_in):
     z = 255.0 * (x_in + 1.0) / 2.0
     z[:, 0, :, :] -= 103.939
@@ -273,6 +346,7 @@ class Discriminator(nn.Module):
         x = x.view(x.size(0), -1)
                 
         return x
+
 """
 def discriminator(param):
     img_h = param['IMG_HEIGHT']
@@ -306,6 +380,147 @@ def discriminator(param):
     model = Model(inputs=[x_tgt, x_src_pose, x_tgt_pose], outputs=y, name='discriminator')
     return model
 """
+
+''' #################
+
+END LOSS FUNCTIONS
+
+''' #################
+
+''' #################
+
+BEGIN WARPING MODULE
+
+''' #################
+
+class InpaintingAutoencoder(nn.Module):
+    ''' 
+    Inpainting autoencoder (warping module) for person texture inpainting
+    '''
+    def __init__(self):
+        super().__init__()
+
+        self.encoder = BodyEncoder()
+        self.context_net = ContextNet()
+        self.decoder = BodyDecoder()
+
+    def forward(self, full_texture_maps):
+        # input: full_texture_maps, B x 24 x 3 x 256 x 256
+        # output: inpainted full_texture_maps, B x 24 x 3 x 256 x 256
+
+        full_texture_embeddings = self.encoder(full_texture_maps)
+        context_embeddings = self.context_net(full_texture_embeddings)
+        inpainted = self.decoder(context_embeddings)
+
+        return inpainted
+    
+class ContextNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.layer1 = nn.Sequential(
+            nn.Linear((24 * 128 * 16 * 16), 256),
+            nn.ReLU())
+        self.layer2 = nn.Sequential(
+            nn.Linear(256, 256),
+            nn.ReLU())
+
+    def forward(self, embedding):
+        # input: embedding, B x 24 x 128 x 16 x 16
+        # output: context_embedding
+
+        B = embedding.shape[0]
+        embedding_flat = embedding.view(B, -1)
+        out = self.layer1(embedding_flat)
+        out = self.layer2(out)
+        out = out.unsqueeze(1).unsqueeze(3).unsqueeze(3).repeat(1, 24, 1, 16, 16)
+
+        return torch.cat((out, embedding), dim=2)
+
+class BodyDecoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d((256 + 128) * 24, 64 * 24, 3, stride=2, padding=1, output_padding=1, groups=24),
+            nn.ReLU(),
+            BodyInstanceNorm(),
+
+            nn.ConvTranspose2d(64 * 24, 32 * 24, 3, stride=2, padding=1, output_padding=1, groups=24),
+            nn.ReLU(),
+            BodyInstanceNorm(),
+
+            nn.ConvTranspose2d(32 * 24, 32 * 24, 3, stride=2, padding=1, output_padding=1, groups=24),
+            nn.ReLU(),
+            BodyInstanceNorm(),
+
+            nn.ConvTranspose2d(32 * 24, 3 * 24, 3, stride=2, padding=1, output_padding=1, groups=24),
+            nn.Sigmoid(),
+        )
+
+    def forward(self, embeddings):
+        # input: embeddings, B x 24 x (256 + 128) x 16 x 16
+        # output: inpainted result, B x 24 x 3 x 256 x 256
+        B = embeddings.shape[0]
+        decoder_out = self.decoder(embeddings.view(B, -1, 16, 16))
+        return decoder_out.view(B, 24, 3, 256, 256)
+
+class BodyEncoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3 * 24, 32 * 24, 3, stride=2, padding=1, groups=24),
+            nn.ReLU(),
+            BodyInstanceNorm(),
+
+            nn.Conv2d(32 * 24, 32 * 24, 3, stride=2, padding=1, groups=24),
+            nn.ReLU(),
+            BodyInstanceNorm(),
+
+            nn.Conv2d(32 * 24, 64 * 24, 3, stride=2, padding=1, groups=24),
+            nn.ReLU(),
+            BodyInstanceNorm(),
+
+            nn.Conv2d(64 * 24, 128 * 24, 3, stride=2, padding=1, groups=24),
+            nn.ReLU(),
+            BodyInstanceNorm(),
+        )
+
+    def forward(self, body_texture):
+        # input: body_texture, B x 24 x 3 x 256 x 256
+        # output: encoded body_texture, B x 24 x 128 x 16 x 16
+
+        B = body_texture.shape[0]
+        encoder_out = self.encoder(body_texture.view(B, -1, 256, 256))
+        return encoder_out.view(B, 24, 128, 16, 16)
+
+class BodyInstanceNorm(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.eps = 1e-5
+
+    def forward(self, embedding):
+        # input: embedding, B x (24 * C) x H x W
+        # output: instance norm embedding, B x (24 * C) x H x W
+        # normalize each C x H x W to have zero mean and unit variance
+
+        B = embedding.shape[0]
+        C = embedding.shape[1] // 24
+        H = embedding.shape[2]
+        W = embedding.shape[3]
+        embedding_stat = embedding.view(B, 24, -1)
+        mean = torch.mean(embedding_stat, dim=2, keepdim=True)
+        std = torch.std(embedding_stat, dim=2, keepdim=True)
+
+        embedding_normalize = (embedding_stat - mean) / (std + self.eps)
+        embedding_res = embedding_normalize.view(B, 24 * C, H, W)
+
+        return embedding_res
+
+''' #################
+
+END WARPING MODULE
+
+''' #################
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Test UNet')
     parser.add_argument('--imPath', type=str, default='../posewarp/data/hunter_256.jpeg')
