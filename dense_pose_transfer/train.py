@@ -240,8 +240,8 @@ class AverageMeter(object):
 if __name__ == "__main__":
     # Feel free to add more args, or change/remove these.
     parser = argparse.ArgumentParser(description='Run Densepose Transfer Network.')
-    parser.add_argument('--train_dataset_path', type=str, default='./UCF-dataset')
-    parser.add_argument('--test_dataset_path', type=str, default='./UCF-dataset')
+    parser.add_argument('--train_dataset_path', type=str, default='./ucf_train_list.txt')
+    parser.add_argument('--test_dataset_path', type=str, default='./ucf_test_list.txt')
     parser.add_argument('--train_batch_size', type=int, default=5)
     parser.add_argument('--test_batch_size', type=int, default=5)
     parser.add_argument('--num_epochs', type=int, default=100)

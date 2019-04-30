@@ -21,6 +21,7 @@ class DensePoseGAN(nn.Module):
     Combines DensePoseTransferNet, and Discriminator
     '''
     def __init__(self):
+        super().__init__()
         # initialize predictive module
 
         # initialize Generator Network
@@ -68,6 +69,7 @@ class DensePoseTransferNet(nn.Module):
     Combines predictive module, warping module, and background inpainting network
     '''
     def __init__(self):
+        super().__init__()
         # initialize predictive module
 
         # initialize warping module
