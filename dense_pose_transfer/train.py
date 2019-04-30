@@ -13,6 +13,7 @@ from ucf_dataset import *
 from networks import *
 import utils
 from tensorboardX import SummaryWriter
+import os
 
 class ExperimentRunner(object):
     """
@@ -20,7 +21,7 @@ class ExperimentRunner(object):
     This class creates the GAN, as well as the network for VGG Loss (VGG Net should be frozen)
     This class also creates the datasets
     """
-    def __init__(self, train_dataset_path, test_dataset_path, train_batch_size, test_batch_size, num_epochs=100, num_data_loader_workers=10):
+    def __init__(self, train_dataset_path, test_dataset_path, train_batch_size, test_batch_size, model_save_dir, num_epochs=100, num_data_loader_workers=10):
         # GAN Network + VGG Loss Network
         self.gan = DensePoseGAN()
         self.vgg_loss_network = VGG19FeatureNet() #Frozen weights, pretrained
@@ -60,6 +61,8 @@ class ExperimentRunner(object):
 
         # Tensorboard logger
         self.txwriter = SummaryWriter()
+        self.model_save_dir = model_save_dir
+        self.save_freq = 5000
 
     def _optimizeGAN(self, pred_img, gt_img, y_pred, y_gt):
         """
@@ -206,8 +209,14 @@ class ExperimentRunner(object):
                     self.txwriter.add_scalar('test/acc', val_accuracy, current_step)
                 """
                 """
-                TODO: Save Model periodically
+                Save Model periodically
                 """
+                if (current_step % self.save_freq == 0) and current_step > 0:
+                    save_name = os.path.join(
+                        self.model_save_dir, 'model_iter_{}.h5'.format(current_step))
+                    self.gan.save_net(save_name, gan)
+                    print('Saved model to {}'.format(save_name))
+            return
                    
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -238,6 +247,7 @@ if __name__ == "__main__":
     parser.add_argument('--test_batch_size', type=int, default=5)
     parser.add_argument('--num_epochs', type=int, default=100)
     parser.add_argument('--num_data_loader_workers', type=int, default=10)
+    parser.add_argument('--model_save_dir', type=str, default='./models')
     args = parser.parse_args()
 
     # Create experiment runner object
@@ -246,6 +256,7 @@ if __name__ == "__main__":
                                           test_dataset_path=args.test_dataset_path, 
                                           train_batch_size=args.train_batch_size,
                                           test_batch_size=args.test_batch_size, 
+                                          model_save_dir=args.model_save_dir,
                                           num_epochs=args.num_epochs, 
                                           num_data_loader_workers=args.num_data_loader_workers)
     # Train Models
