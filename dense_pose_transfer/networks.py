@@ -22,8 +22,6 @@ class DensePoseGAN(nn.Module):
     '''
     def __init__(self):
         super().__init__()
-        # initialize predictive module
-
         # initialize Generator Network
         self.generator = DensePoseTransferNet()
 
@@ -71,14 +69,13 @@ class DensePoseTransferNet(nn.Module):
     def __init__(self):
         super().__init__()
         # initialize predictive module
-
+        self.predictive_module = PredictiveModel()
         # initialize warping module
         self.warping_module = InpaintingAutoencoder()
-
         # initialize background inpainting module
         self.bg_inpainting = UNet()
-
         # initialize blending module
+        self.blending_module = Blending()
 
     def forward(self, source_im, source_iuv, target_iuv):
         # source_im:  B x (R, G, B) x 256 x 256 float [0, 1]
