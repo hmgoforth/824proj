@@ -1,0 +1,8 @@
+v_BodyWeightSquats_g01
+v_BodyWeightSquats_g06
+v_BodyWeightSquats_g11
+v_BodyWeightSquats_g12
+v_BodyWeightSquats_g15
+v_BodyWeightSquats_g16
+v_BodyWeightSquats_g19
+v_BodyWeightSquats_g25

@@ -5,3 +5,6 @@ openpose/
 images/
 todo.txt
 backgroundInpainting/pretrainedModel.pth
+.DS_Store
+inpaintting/.DS_Store
+posewarp/.DS_Store
