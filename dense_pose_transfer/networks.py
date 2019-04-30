@@ -669,7 +669,6 @@ class PredictiveModel(nn.Module):
             nn.Tanh(),
         ) # output: B x 3 x 256 x 256
 
-        pred_input = torch.cat((source_im, source_iuv, target_iuv), 1)
     def forward(self, source_im, source_iuv, target_iuv):
         pred_input = torch.cat((source_im, source_iuv, target_iuv), 1)
         enc1 = self.enc_block1(pred_input) # B x 64 x 256 x 256
