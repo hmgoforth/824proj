@@ -34,7 +34,7 @@ class ExperimentRunner(object):
                                            {'params': self.gan.discriminator.parameters(), 'lr': self.disc_lr}
                                          ], momentum=0.9)
         # Network losses
-        self.BCECriterion = nn.BCELosswithLogits().cuda()
+        self.BCECriterion = nn.BCEWithLogitsLoss().cuda()
         self.VGGLoss = vgg_loss().cuda()
 
         # Train settings + log settings
