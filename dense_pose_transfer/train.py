@@ -144,7 +144,7 @@ class ExperimentRunner(object):
 
             for batch_id, batch_data in enumerate(self.train_dataset_loader):
                 self.gan.train()  # Set the model to train mode
-                self.vgg_loss_network().eval()
+                self.vgg_loss_network.eval()
                 current_step = epoch * num_batches + batch_id
 
                 # Get data from dataset
