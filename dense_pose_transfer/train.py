@@ -186,7 +186,6 @@ class ExperimentRunner(object):
                 tot_losses.update(tot_loss.data[0], disc_gt_tgt.shape[0])
 
                 acc = 100.0 * torch.mean( ( torch.round(F.softmax(classification_src, dim=1)) == disc_gt_tgt ).float() )
-                train_accuracies.update(disc_acc.data[0], disc_gt.shape[0])
 
                 tot_losses.update(tot_loss.data[0], disc_gt_tgt.shape[0])
                 train_accuracies.update(acc.data[0], disc_gt_tgt.shape[0])
