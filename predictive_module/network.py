@@ -60,9 +60,9 @@ class BottleNeck(nn.Module):
         x = self.rb6(x)
         return x
 
-class GenerativeModel(nn.Module):
+class PredictiveModel(nn.Module):
     def __init__(self, img_shape=(30, 9, 256, 256), num_features=64):
-        super(GenerativeModel, self).__init__()
+        super(PredictiveModel, self).__init__()
         #Input is 256x256x9 of DensePose result
         batches, channels, height, width = img_shape
 
@@ -128,7 +128,7 @@ if __name__ == '__main__':
     unet_test_data = torch.randn(10, 9, 256, 256).cuda(async=True)
     #blend_test_data = torch.randn(10, 9, 256, 256).cuda(async=True)
 
-    unet_model = GenerativeModel(unet_test_data.shape, num_features=64)
+    unet_model = PredictiveModel(unet_test_data.shape, num_features=64)
     #blend_model = Blending(blend_test_data.shape, num_features=64)
     use_cuda = torch.cuda.is_available()
     if use_cuda:
