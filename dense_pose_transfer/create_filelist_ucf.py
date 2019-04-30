@@ -17,16 +17,22 @@ def parse_args():
         type=str
     )
     parser.add_argument(
-        '--outfile',
-        help='location of UCF filelist outfile',
-        default='ucf_filelist.txt',
+        '--train_file',
+        help='location of UCF train list',
+        default='ucf_train_list.txt',
+        type=str
+    )
+    parser.add_argument(
+        '--test_file',
+        help='location of UCF test list',
+        default='ucf_test_list.txt',
         type=str
     )
     return parser.parse_args()
 
 def main(args):
     filelist = []
-
+    val 
     for root, dirs, files in os.walk(args.ucf):
         for file in files:
             if file.endswith("IUV.png"): # only look for valid files
@@ -35,8 +41,19 @@ def main(args):
 
                 filelist.append(item_path)
 
-    with open(args.outfile, "wb") as fp:
-        pickle.dump(filelist, fp)
+    trainlist = []
+    testlist = []
+    for i, fname in enumerate(filelist):
+        if i % 10 == 1:
+            testlist.append(fname)
+        else:
+            trainlist.append(fname)
+
+    with open(args.train_file, "wb") as fp:
+        pickle.dump(trainlist, fp)
+    
+    with open(args.test_file, "wb") as fp:
+        pickle.dump(testlist, fp)
 
 if __name__ == '__main__':
     args = parse_args()
