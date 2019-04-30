@@ -43,7 +43,7 @@ class ExperimentRunner(object):
         self.log_freq = 10  # Steps
         self.test_freq = 1000  # Steps
         self.train_batch_size = train_batch_size
-        self.val_batch_size = val_batch_size
+        self.test_batch_size = test_batch_size
 
         # Create datasets
         self.train_dataset = UCFDensePoseTransferDataset(train_dataset_path)
