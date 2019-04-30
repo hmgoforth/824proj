@@ -239,8 +239,7 @@ class AverageMeter(object):
 
 if __name__ == "__main__":
     # Feel free to add more args, or change/remove these.
-    parser = argparse.ArgumentParser(description='Load VQA.')
-    parser.add_argument('--model', type=str, choices=['simple', 'coattention'], default='coattention')
+    parser = argparse.ArgumentParser(description='Run Densepose Transfer Network.')
     parser.add_argument('--train_dataset_path', type=str, default='./UCF-dataset')
     parser.add_argument('--test_dataset_path', type=str, default='./UCF-dataset')
     parser.add_argument('--train_batch_size', type=int, default=5)

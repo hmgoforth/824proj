@@ -13,7 +13,7 @@ def parse_args():
     parser.add_argument(
         '--ucf',
         help='location of ucf dataset',
-        default='/dataset/UCF101/preprocessed',
+        default='../UCF-dataset/preprocessed',
         type=str
     )
     parser.add_argument(
