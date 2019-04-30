@@ -35,7 +35,7 @@ class ExperimentRunner(object):
                                          ], momentum=0.9)
         # Network losses
         self.BCECriterion = nn.BCEWithLogitsLoss().cuda()
-        self.VGGLoss = vgg_loss().cuda()
+        self.VGGLoss = VGGLoss().cuda()
 
         # Train settings + log settings
         self.num_epochs = num_epochs

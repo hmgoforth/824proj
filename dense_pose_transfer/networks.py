@@ -336,7 +336,15 @@ class VGG19FeatureNet(nn.Module):
         # Assume input is from -1 to 1 --> preprocess
         # If image is 0 to 1, we are fine
         return self.features(img)
-    
+
+class VGGLoss(nn.Module):
+    def __init__(self):
+        super(VGGLoss,self).__init__()
+        
+    def forward(self,y_pred, y_true, lmbda=1.0):
+        vgg_loss(y_pred, y_true, lmbda=lmbda)
+
+
 def vgg_loss(y_pred, y_true, lmbda=1.0):
     return torch.mean(torch.sum(torch.abs(y_pred - y_true),dim=1))
 
