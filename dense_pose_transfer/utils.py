@@ -72,7 +72,7 @@ def texture_from_images_and_iuv(images, iuv, size_texture=256):
     # output texture map: B x 24 x 3 x size_texture x size_texture
 
     B = images.shape[0]
-    texture_map = torch.zeros(B, 24, 3, size_texture, size_texture)
+    texture_map = torch.zeros(B, 24, 3, size_texture, size_texture).cuda()
 
     intensities = images.unsqueeze(1).repeat(1, 24, 1, 1, 1).contiguous().view(-1)
 
