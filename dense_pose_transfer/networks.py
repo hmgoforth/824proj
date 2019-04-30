@@ -645,7 +645,7 @@ class BottleNeck(nn.Module):
 
 class PredictiveModel(nn.Module):
     def __init__(self, img_shape=(30, 9, 256, 256), num_features=64):
-        super(GenerativeModel, self).__init__()
+        super(PredictiveModel, self).__init__()
         #Input is 256x256x9 of DensePose result
         batches, channels, height, width = img_shape
 
