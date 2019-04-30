@@ -8,7 +8,7 @@ import torchvision.utils
 import argparse
 from datetime import datetime
 
-import network
+from network import *
 import dataset
 import pdb
 
@@ -72,4 +72,4 @@ def parse_args():
 
 def main(args):
     model_save_path = args.model_save + str(datetime.today().day) + '_' + str(datetime.today().month)
-    net = network.UNet
+    gan = network.

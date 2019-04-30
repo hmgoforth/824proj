@@ -30,18 +30,24 @@ class DensePoseGAN(nn.Module):
         self.discriminator = Discriminator()
 
 
-    def forward(self, source_im, source_iuv, target_iuv):
-        # source_im: B x (R, G, B) x 256 x 256 float [0, 1]
+    def forward(self, source_im, source_iuv, target_iuv, use_gt=False):
+        # source_im:  B x (R, G, B) x 256 x 256 float [0, 1]
         # source_iuv: B x (I, U, V) x 256 x 256
         # target_iuv: B x (I, U, V) x 256 x 256
 
         # Generate predicted image
-        predictive_result, source_body_mask, target_body_mask = self.generator(source_im, source_iuv, target_iuv)
+        # If use_gt, we use the source image as the predictive result.  This is for training the Disc Network
+        if use_gt:
+            source_body_mask, _ = utils.get_body_and_part_mask_from_iuv(source_iuv)
+            target_body_mask, _ = utils.get_body_and_part_mask_from_iuv(target_iuv)
+            predictive_result = source_im
+        else:
+            predictive_result, source_body_mask, target_body_mask = self.generator(source_im, source_iuv, target_iuv)
 
         # Classify predicted image as either from distribution or not
         classification = self.discriminator(predictive_result, source_body_mask, target_body_mask)
 
-        return predictive_result, classification 
+        return predictive_result, classification
         # predictive_result  B x (R, G, B) x 256 x 256
         # classification:    B x 1
 
@@ -73,7 +79,7 @@ class DensePoseTransferNet(nn.Module):
         # initialize blending module
 
     def forward(self, source_im, source_iuv, target_iuv):
-        # source_im: B x (R, G, B) x 256 x 256 float [0, 1]
+        # source_im:  B x (R, G, B) x 256 x 256 float [0, 1]
         # source_iuv: B x (I, U, V) x 256 x 256
         # target_iuv: B x (I, U, V) x 256 x 256
 
@@ -326,9 +332,10 @@ class VGG19FeatureNet(nn.Module):
 
     def forward(self, img):
         # Assume input is from -1 to 1 --> preprocess
-        return self.features(vgg_preprocess(img))
+        # If image is 0 to 1, we are fine
+        return self.features(img)
     
-def vgg_loss(y_pred, y_true, n_layers=0, reg=0.1):
+def vgg_loss(y_pred, y_true, lmbda=1.0):
     return torch.mean(torch.sum(torch.abs(y_pred - y_true),dim=1))
 
 class Discriminator(nn.Module):
