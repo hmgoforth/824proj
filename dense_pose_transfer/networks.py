@@ -213,7 +213,99 @@ class VGG19FeatureNet(nn.Module):
 def vgg_loss(y_pred, y_true, n_layers=0, reg=0.1):
     return torch.mean(torch.sum(torch.abs(y_pred - y_true),dim=1))
 
+class Discriminator(nn.Module):
+    """
+    Discriminator
+    """
+    def __init__(self, in_c=51):
+        super().__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(in_channels=in_c, out_channels=64, kernel_size=5, padding=2, stride=1),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(kernel_size=2),
+            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=5, padding=2, stride=1),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(kernel_size=2),
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding=1, stride=1),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(kernel_size=2),
+            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1, stride=1),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(kernel_size=2),
+            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1, stride=1),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(kernel_size=2),
+            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1, stride=1),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(kernel_size=2),
+        )
+        self.classifier = nn.Sequential(
+            nn.Linear(4096, 256),
+            nn.ReLU(),
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Linear(256, 1)
+            # Use BCEWithLogitsLoss so we don't need sigmoid layer
+            #nn.Sigmoid()
+        )
 
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for m in self.features.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0.)
+
+    def forward(self, img, pose_src, pose_tgt):
+        """ Input:
+            img (batch_sizex3x256x256)
+            pose_src (batch_sizex24x256x256)
+            pose_tgt (batch_sizex24x256x256)
+        """
+        # Concatenate along channels
+        x = torch.cat((img, pose_src, pose_tgt), dim=1) #channels = 51
+        x = self.features(x)
+        x = x.view(x.size(0), -1)
+        #print(x.shape)
+        x = self.classifier(x)
+        x = x.view(x.size(0), -1)
+                
+        return x
+"""
+def discriminator(param):
+    img_h = param['IMG_HEIGHT']
+    img_w = param['IMG_WIDTH']
+    n_joints = param['n_joints']
+    pose_dn = param['posemap_downsample']
+
+    x_tgt = Input(shape=(img_h, img_w, 3))
+    x_src_pose = Input(shape=(img_h / pose_dn, img_w / pose_dn, n_joints))
+    x_tgt_pose = Input(shape=(img_h / pose_dn, img_w / pose_dn, n_joints))
+
+    x = my_conv(x_tgt, 64, ks=5)
+    x = MaxPooling2D()(x) # 128
+    x = concatenate([x, x_src_pose, x_tgt_pose])
+    x = my_conv(x, 128, ks=5)
+    x = MaxPooling2D()(x) # 64
+    x = my_conv(x, 256)
+    x = MaxPooling2D()(x) # 32
+    x = my_conv(x, 256)
+    x = MaxPooling2D()(x) # 16
+    x = my_conv(x, 256)
+    x = MaxPooling2D()(x) # 8
+    x = my_conv(x, 256)  # 8
+
+    x = Flatten()(x)
+
+    x = Dense(256, activation='relu')(x)
+    x = Dense(256, activation='relu')(x)
+    y = Dense(1, activation='sigmoid')(x)
+
+    model = Model(inputs=[x_tgt, x_src_pose, x_tgt_pose], outputs=y, name='discriminator')
+    return model
+"""
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Test UNet')
     parser.add_argument('--imPath', type=str, default='../posewarp/data/hunter_256.jpeg')
@@ -246,4 +338,11 @@ if __name__ == "__main__":
     print(y_pred.shape)
     loss = vgg_loss(y_pred, y_true)
     print(loss)
+
+    model3 = Discriminator().cuda()
+    model3.eval()
+    disc_output = model3(img, pose, pose)
+    print(disc_output)
+    print(disc_output.shape)
+
 
