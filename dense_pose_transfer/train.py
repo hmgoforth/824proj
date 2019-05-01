@@ -66,6 +66,7 @@ class ExperimentRunner(object):
         self.txwriter = SummaryWriter()
         self.model_save_dir = model_save_dir
         self.save_freq = 5000
+        self.display_freq = 200
 
         self.gan = nn.DataParallel(self.gan)
         self.vgg_loss_network = nn.DataParallel(self.vgg_loss_network)
@@ -211,6 +212,19 @@ class ExperimentRunner(object):
                     self.txwriter.add_scalar('train/total_loss', tot_losses.avg, current_step)
                     self.txwriter.add_scalar('train/discriminator_acc', train_accuracies.avg, current_step)
                 """
+                Visualize some images
+                """
+                if current_step % self.display_freq == 6:
+                    name1 = '{0}_{1}_{2}'.format(epoch, current_step, "image1")
+                    name2 = '{0}_{1}_{2}'.format(epoch, current_step, "image2")
+                    name3 = '{0}_{1}_{2}'.format(epoch, current_step, "gan_image")
+                    im1 = denormalizeImage(src_img[0,:,:,:].cpu().numpy())
+                    im2 = denormalizeImage(target_img[0,:,:,:].cpu().numpy())
+                    im3 = denormalizeImage(generated_img[0,:,:,:].detach().cpu().numpy())
+                    self.txwriter.add_image("Image1/"+name1,im1)
+                    self.txwriter.add_image("Image2/"+name2,im2)
+                    self.txwriter.add_image("GAN/"+name3,im3)
+                """
                 TODO : Test accuracies
                 if current_step % self.test_freq == 0:#self._test_freq-1:
                     self._model.eval()
@@ -222,8 +236,7 @@ class ExperimentRunner(object):
                 Save Model periodically
                 """
                 if (current_step % self.save_freq == 0) and current_step > 0:
-                    save_name = os.path.join(
-                        self.model_save_dir, 'model_iter_{}.pth'.format(current_step))
+                    save_name = 'model_checkpoint.pth'
                     torch.save(self.gan.state_dict(), save_name)
                     print('Saved model to {}'.format(save_name))
             return
@@ -246,6 +259,11 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
+def denormalizeImage(image):
+    #mean=np.array([0.485, 0.456, 0.406]).reshape(3,1,1)
+    #std=np.array([0.229, 0.224, 0.225]).reshape(3,1,1)
+    image = image
+    return image.astype(np.float32)
 
 if __name__ == "__main__":
     # Feel free to add more args, or change/remove these.

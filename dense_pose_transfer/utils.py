@@ -104,7 +104,7 @@ def combine_foreground_background(foreground, foreground_mask, background):
     # result: B x (R, G, B) x 256 x 256 float [0, 1]
 
     foreground_mask = foreground_mask.repeat(1, 3, 1, 1)
-    result = background * foreground_mask.float() + foreground * foreground_mask.float()
+    result = background * (1. - foreground_mask.float()) + foreground * foreground_mask.float()
 
     return result
 
