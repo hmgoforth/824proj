@@ -26,11 +26,11 @@ class ResidualBlock(nn.Module):
             nn.Dropout(0.4),
             nn.Conv2d(channels, num_features, 1, 1, padding=0, bias=False),
             nn.BatchNorm2d(num_features),
-            nn.ReLU(inplace=True))
+            nn.ReLU())
         self.conv2 = nn.Sequential(
             nn.Conv2d(num_features, num_features, 3, 1, padding=1, bias=False),
             nn.BatchNorm2d(num_features),
-            nn.ReLU(inplace=True))
+            nn.ReLU())
         if classify:
             self.classifier = nn.Linear(num_features, num_features)
     def forward(self, input_mat):
@@ -38,8 +38,8 @@ class ResidualBlock(nn.Module):
         x = self.conv2(input_mat)
         x += input_mat
         if self.classify:
-            x = self.classifier(x.permute(0,2,3,1)) 
-            return x.permute(0,3,1,2)
+            x = self.classifier(x.view(x.size()[0],x.size()[2],x.size()[3],x.size()[1])) 
+            return x.view(x.size()[0],x.size()[3],x.size()[1],x.size()[2])
         return x
 
 class BottleNeck(nn.Module):
@@ -74,11 +74,11 @@ class PredictiveModel(nn.Module):
 
         self.deconv1 = nn.Sequential(
             nn.ConvTranspose2d(256, 256, 3, stride=2, padding=1, output_padding=1),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.BatchNorm2d(256))
         self.deconv2 = nn.Sequential(
             nn.ConvTranspose2d(256, 256, 3, stride=2, padding=1, output_padding=1),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.BatchNorm2d(256))
  
         self.output = nn.Sequential(
@@ -120,25 +120,28 @@ class Blending(nn.Module):
        x3 = self.res1(x2)
        x4 = self.res2(x3)
        x5 = self.res3(x4) 
-       to_linear = x5.permute(0,2,3,1)
-       output = self.classify(to_linear)
-       return output.permute(0,3,1,2)
+       to_linear = x5.view(x5.size()[0],x5.size()[2],x5.size()[3],x5.size()[1])
+       o = self.classify(to_linear)
+       return o.view(o.size()[0],o.size()[3],o.size()[1],o.size()[2])
 
 if __name__ == '__main__':
-    unet_test_data = torch.randn(10, 9, 256, 256).cuda(async=True)
-    #blend_test_data = torch.randn(10, 9, 256, 256).cuda(async=True)
+    #unet_test_data = torch.randn(10, 9, 256, 256).cuda(async=True)
+    pdb.set_trace()
+    blend_test_data = torch.randn(10, 9, 256, 256).cuda()
 
-    unet_model = PredictiveModel(unet_test_data.shape, num_features=64)
-    #blend_model = Blending(blend_test_data.shape, num_features=64)
+    #unet_model = PredictiveModel(unet_test_data.shape, num_features=64)
+    blend_model = Blending(blend_test_data.shape, num_features=64)
     use_cuda = torch.cuda.is_available()
     if use_cuda:
-        unet_model = unet_model.cuda()
-    #    blend_model = blend_model.cuda()
+    #    unet_model = unet_model.cuda()
+        blend_model = blend_model.cuda()
 
-    unet_model.train()
-    #blend_model.train()
+    #unet_model.train()
+    blend_model.train()
    
-    predicted_image = unet_model(unet_test_data)
+    #predicted_image = unet_model(unet_test_data)
 
-    #blended_image = blend_model(blend_test_data)
-    pdb.set_trace() 
+    blended_image = blend_model(blend_test_data)
+    pdb.set_trace()
+
+    main() 
