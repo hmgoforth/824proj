@@ -67,6 +67,9 @@ class ExperimentRunner(object):
         self.model_save_dir = model_save_dir
         self.save_freq = 5000
 
+        self.gan = nn.DataParallel(self.gan)
+        self.vgg_loss_network = nn.DataParallel(self.vgg_loss_network)
+
     def _optimizeGAN(self, pred_img, gt_img, y_pred, y_gt):
         """
         VGGLoss + GAN loss
@@ -137,6 +140,7 @@ class ExperimentRunner(object):
         Main training loop
         Helpful URL: https://github.com/balakg/posewarp-cvpr2018/blob/master/code/posewarp_gan_train.py
         """
+
         for epoch in range(self.num_epochs):
             num_batches = len(self.train_dataset_loader)
             # Initialize running averages
