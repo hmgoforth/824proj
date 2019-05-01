@@ -89,7 +89,7 @@ class DensePoseTransferNet(nn.Module):
         # warping
         source_texture_map = utils.texture_from_images_and_iuv(source_im, source_iuv)
         inpainted_source_texture_map = self.warping_module(source_texture_map)
-        warping_result = utils.images_from_texture_and_iuv_batch(inpainted_source_texture_map, source_iuv)
+        warping_result = utils.images_from_texture_and_iuv_batch(inpainted_source_texture_map, target_iuv)
 
         # background inpainting
         source_body_mask, source_part_mask = utils.get_body_and_part_mask_from_iuv(source_iuv)
