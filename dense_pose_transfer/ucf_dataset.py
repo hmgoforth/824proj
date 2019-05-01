@@ -12,8 +12,8 @@ import glob
 import os
 
 import utils
-
-from pdb import set_trace as st
+import pdb
+#from pdb import set_trace as st
 
 class UCFDensePoseTransferDataset(Dataset):
     ''''
@@ -50,7 +50,7 @@ class UCFDensePoseTransferDataset(Dataset):
 
         #print('item: ' + item_basepath)
         #print('target: ' + target_basepath)
-
+        #pdb.set_trace()
         ret = {'im':im,
                'im_iuv':im_iuv,
                'target_im':target_im,

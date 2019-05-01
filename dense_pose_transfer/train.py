@@ -154,7 +154,7 @@ class ExperimentRunner(object):
                 target_img = batch_data['target_im'].cuda(async=True)
                 src_iuv = batch_data['im_iuv'].cuda(async=True)
                 target_iuv = batch_data['target_iuv'].cuda(async=True)
-                
+                pdb.set_trace()
                 # ============
                 # Run predictive GAN on source image
                 generated_img, classification_src = self.gan(src_img, src_iuv, target_iuv, use_gt=False)
@@ -249,7 +249,7 @@ if __name__ == "__main__":
     parser.add_argument('--train_batch_size', type=int, default=2)
     parser.add_argument('--test_batch_size', type=int, default=2)
     parser.add_argument('--num_epochs', type=int, default=100)
-    parser.add_argument('--num_data_loader_workers', type=int, default=10)
+    parser.add_argument('--num_data_loader_workers', type=int, default=2)
     parser.add_argument('--model_save_dir', type=str, default='./models')
     args = parser.parse_args()
 
