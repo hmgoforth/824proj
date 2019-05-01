@@ -218,8 +218,8 @@ class ExperimentRunner(object):
                 """
                 if (current_step % self.save_freq == 0) and current_step > 0:
                     save_name = os.path.join(
-                        self.model_save_dir, 'model_iter_{}.h5'.format(current_step))
-                    save_net(save_name, self.gan)
+                        self.model_save_dir, 'model_iter_{}.pth'.format(current_step))
+                    torch.save(self.gan.state_dict(), save_name)
                     print('Saved model to {}'.format(save_name))
             return
                    
@@ -240,20 +240,6 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
-
-def save_net(fname, net):
-    import h5py
-    h5f = h5py.File(fname, mode='w')
-    for k, v in net.state_dict().items():
-        h5f.create_dataset(k, data=v.cpu().numpy())
-
-
-def load_net(fname, net):
-    import h5py
-    h5f = h5py.File(fname, mode='r')
-    for k, v in net.state_dict().items():
-        param = torch.from_numpy(np.asarray(h5f[k]))
-        v.copy_(param)
 
 
 if __name__ == "__main__":
