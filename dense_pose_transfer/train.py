@@ -31,7 +31,8 @@ class ExperimentRunner(object):
         self.gan_lr = 1.e-4
         self.disc_lr = 1.e-4
         self.disc_lambda = 0.1
-        self.optimizerG = torch.optim.SGD([ {'params': self.gan.generator.parameters(), 'lr': self.gan_lr}
+        self.optimizerG = torch.optim.SGD([ {'params': self.gan.generator.parameters(), 'lr': self.gan_lr},
+                                            {'params': self.gan.discriminator.parameters(), 'lr': self.disc_lr}
                                          ], momentum=0.9)
         self.optimizerD = torch.optim.SGD([ {'params': self.gan.discriminator.parameters(), 'lr': self.disc_lr}
                                          ], momentum=0.9)
