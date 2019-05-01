@@ -8,3 +8,6 @@ backgroundInpainting/pretrainedModel.pth
 .DS_Store
 inpaintting/.DS_Store
 posewarp/.DS_Store
+posewarp/data/.DS_Store
+posewarp/data/floss.mp4
+posewarp/data/floss_frames
