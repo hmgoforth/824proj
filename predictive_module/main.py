@@ -1,4 +1,4 @@
-from train import train
+from train_predict import train
 import network
 from predict_data import DFDenseData
 from tensorboardX import SummaryWriter
@@ -99,12 +99,12 @@ if __name__ == "__main__":
     if use_cuda:
         predict_model = predict_model.cuda()
 
-    optimizer = optim.Adam(predict_model.parameters(), lr=args.lr, betas=(0.5, 0.999))
+    optimizer = optim.Adam(predict_model.parameters(), lr=4e-6, betas=(0.5, 0.999))
     validation_split = 0.2
     shuffle_dataset = True
     random_seed = 42
 
-    dataset_size = int(7838)
+    dataset_size = int(7465)
     indices = list(range(dataset_size))
     split = int(np.floor(validation_split * dataset_size))
     np.random.seed(random_seed)
@@ -112,13 +112,10 @@ if __name__ == "__main__":
     train_indices, test_indices = indices[split:], indices[:split]
     train_sampler = SubsetRandomSampler(train_indices)
     test_sampler = SubsetRandomSampler(test_indices)
-    pdb.set_trace()
-    train_dataset = DFDenseData(args.loaded_images_h5py, args.loaded_images_dir, args.load_images)
-    pdb.set_trace()
-    test_dataset = DFDenseData(args.loaded_images_h5py, args.loaded_images_dir, args.load_images)
+    train_dataset = DFDenseData(args.filedict)
+    test_dataset = DFDenseData(args.filedict)
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch, sampler=train_sampler)
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch, sampler=test_sampler)
-    pdb.set_trace()
-    train(args, predict_model, optimizer, train_dataset)    
+    train(args, predict_model, optimizer, train_dataloader, model_save_path) 
         
 

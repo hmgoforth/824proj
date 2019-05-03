@@ -9,7 +9,7 @@ import argparse
 from datetime import datetime as date
 
 import network
-import dataset
+from predict_data import DFDenseData
 import loss_function
 
 from pdb import set_trace as st
@@ -81,7 +81,7 @@ def main(args):
         net = net.cuda()
 
     optimizer = optim.Adam(net.parameters(), lr=args.lr, betas=(0.5,0.999))
-    train_dataset = dataset.DeepfashionInpaintingDataset(args.filedict, args.pathtoind, args.textures)
+    train_dataset = DFDenseData(args.filedict)
 
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True)
 
@@ -94,12 +94,15 @@ def main(args):
 
             net.train()
             current_step = epoch * num_batches + batch_idx
+            pdb.set_trace()
+            images = batch_data['images'].cuda() if use_cuda else batch_data['images']
+            iuvs = batch_data['iuvs'].cuda() if use_cuda else batch_data['iuvs']
+            test_iuvs = batch_data['test_iuvs'].cuda() if use_cuda else batch_data['test_iuvs']
+            test_images = batch_data['test_images'].cuda() if use_cuda else batch_data['test_iuvs']
+            net_input = torch.cat((images, iuvs, test_iuvs), 1)
+            predicted_images = net(net_input)
 
-            im_texture = batch_data['im_texture'].cuda() if use_cuda else batch_data['im_texture']
-            mv_texture = batch_data['mv_texture'].cuda() if use_cuda else batch_data['mv_texture']
-            inpainted = net(im_texture)
-
-            loss = loss_function.mv_loss(inpainted, mv_texture)
+            loss = loss_function.pred_loss(predicted_images, test_images)
 
             optimizer.zero_grad()
             loss.backward()
@@ -110,7 +113,7 @@ def main(args):
                 tboard.add_scalar('train/loss', loss, current_step)
 
             if current_step % args.image_log_freq == 0:
-                partgrid = torchvision.utils.make_grid(inpainted[0,:,:,:,:], nrow=6, padding=0)
+                partgrid = torchvision.utils.make_grid(predicted_images[0,:,:,:], nrow=6, padding=0)
                 tboard.add_image('train/inpainted_{:d}'.format(current_step), partgrid, current_step)
 
             if current_step % args.model_save_freq == 0:
