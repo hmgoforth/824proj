@@ -73,7 +73,7 @@ def parse_args():
 
 def main(args):
 
-    ds = Places2DatasetUFCMasks(args.ufcfilelist, args.places2filelist)
+    ds = Places2DatasetUFCMasks(args.ufcfilelist, args.places2filelist, args.places2_basepath)
     for idx in range(len(ds)):
         print(idx)
         data=ds[idx]
