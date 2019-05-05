@@ -60,7 +60,7 @@ def parse_args():
     parser.add_argument(
         '--places2filelist',
         help='location of places2 filedict',
-        default='places2_filelist.txt',
+        default='../places365_standard/train.txt',
         type=str
     )
     parser.add_argument(
