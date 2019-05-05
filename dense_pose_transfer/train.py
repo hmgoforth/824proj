@@ -31,18 +31,18 @@ class ExperimentRunner(object):
         self.gan_lr = 1.e-4
         self.disc_lr = 1.e-4
         self.disc_lambda = 0.1
-        self.optimizerG = torch.optim.SGD([ {'params': self.gan.generator.parameters(), 'lr': self.gan_lr},
-                                            {'params': self.gan.discriminator.parameters(), 'lr': self.disc_lr}
-                                         ], momentum=0.9)
-        self.optimizerD = torch.optim.SGD([ {'params': self.gan.discriminator.parameters(), 'lr': self.disc_lr}
-                                         ], momentum=0.9)
+        self.optimizerG = torch.optim.Adam([ {'params': self.gan.generator.parameters(), 'lr': self.gan_lr}
+                                            #{'params': self.gan.discriminator.parameters(), 'lr': self.disc_lr}
+                                         ], betas=(0.5, 0.999))
+        self.optimizerD = torch.optim.Adam([ {'params': self.gan.discriminator.parameters(), 'lr': self.disc_lr}
+                                         ],betas=(0.5, 0.999))
         # Network losses
         self.BCECriterion = nn.BCEWithLogitsLoss().cuda()
         self.VGGLoss = VGGLoss().cuda()
 
         # Train settings + log settings
         self.num_epochs = num_epochs
-        self.start_disc_iters = 5
+        self.start_disc_iters = 15
         self.log_freq = 10  # Steps
         self.test_freq = 1000  # Steps
         self.train_batch_size = train_batch_size
@@ -87,7 +87,7 @@ class ExperimentRunner(object):
         """
         self.optimizerD.zero_grad()
         loss = self.BCECriterion(y_pred, y_gt)
-        loss.backward(retain_graph=True)
+        loss.backward()
         self.optimizerD.step()
         return loss
     
@@ -164,7 +164,7 @@ class ExperimentRunner(object):
 
                 # ============
                 # Run predictive GAN on source image
-                generated_img, classification_src = self.gan(src_img, src_iuv, target_iuv, use_gt=False)
+                _, classification_src = self.gan(src_img, src_iuv, target_iuv, use_gt=False)
                 # Run predictive GAN on target image
                 _ , classification_tgt = self.gan(target_img, src_iuv, target_iuv, use_gt=True)
                 # Create discriminator groundtruth
@@ -191,6 +191,7 @@ class ExperimentRunner(object):
                 # ============
                 # Optimize the GAN
                 # Note that now we use disc_gt_tgt which are 1's
+                generated_img, classification_src = self.gan(src_img, src_iuv, target_iuv, use_gt=False)
                 tot_loss = self._optimizeGAN(generated_img, target_img, classification_src, disc_gt_tgt)
                 tot_losses.update(tot_loss.item(), disc_gt_tgt.shape[0])
 
