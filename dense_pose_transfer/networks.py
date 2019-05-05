@@ -9,6 +9,8 @@ from scipy import ndimage
 import torchvision.models as M
 import torch.nn.functional as F
 
+from pdb import set_trace as st
+
 import utils
 
 ''' #################
@@ -21,10 +23,10 @@ class DensePoseGAN(nn.Module):
     '''
     Combines DensePoseTransferNet, and Discriminator
     '''
-    def __init__(self):
+    def __init__(self, pretrained_person_inpainter=None):
         super().__init__()
         # initialize Generator Network
-        self.generator = DensePoseTransferNet()
+        self.generator = DensePoseTransferNet(pretrained_person_inpainter)
 
         # initialize Discriminator Network
         self.discriminator = Discriminator()
@@ -67,12 +69,17 @@ class DensePoseTransferNet(nn.Module):
     '''
     Combines predictive module, warping module, and background inpainting network
     '''
-    def __init__(self):
+    def __init__(self, pretrained_person_inpainter=None):
         super().__init__()
         # initialize predictive module
         self.predictive_module = PredictiveModel()
         # initialize warping module
         self.warping_module = InpaintingAutoencoder()
+
+        if pretrained_person_inpainter is not None:
+            print('LOADING PRETRAINED PERSON INPAINTER')
+            self.warping_module.load_state_dict(torch.load(pretrained_person_inpainter))
+
         # initialize background inpainting module
         self.bg_inpainting = UNet()
         # initialize blending module
@@ -88,7 +95,9 @@ class DensePoseTransferNet(nn.Module):
 
         # warping
         source_texture_map = utils.texture_from_images_and_iuv(source_im, source_iuv)
+        # utils.plot_texture_map(source_texture_map[0])
         inpainted_source_texture_map = self.warping_module(source_texture_map)
+        # utils.plot_texture_map(inpainted_source_texture_map[0])
         warping_result = utils.images_from_texture_and_iuv_batch(inpainted_source_texture_map, target_iuv)
 
         # background inpainting
@@ -100,10 +109,10 @@ class DensePoseTransferNet(nn.Module):
         inpainted_bg = self.bg_inpainting(source_im, source_body_mask, source_part_mask)
 
         # blending
-        blending_result = self.blending_module(predictive_result, warping_result, target_iuv)
+        # blending_result = self.blending_module(predictive_result, warping_result, target_iuv)
 
         # final result
-        final_result = utils.combine_foreground_background(blending_result, target_body_mask, inpainted_bg)
+        final_result = utils.combine_foreground_background(warping_result, target_body_mask, inpainted_bg)
 
         return final_result, source_part_mask, target_part_mask
         # final_result:     B x (R, G, B) x 256 x 256
@@ -225,7 +234,8 @@ class UNet(nn.Module):
 
         # Input is Body mask, invert it
         mask = mask == 0
-        x_in = torch.cat((image, mask.float(), pose.float()),dim=1) #256
+        mask = mask.float()
+        x_in = torch.cat((image*mask, mask.float(), pose.float()),dim=1) #256
         x0 = self.conv0(x_in) #256
         x1 = self.conv1(x0)
         x2 = self.conv2(x1) #128

@@ -10,6 +10,7 @@ from scipy import ndimage
 import torchvision.models as M
 import torch.nn.functional as F
 from ucf_dataset import *
+import torchvision.utils
 
 from networks import *
 import utils
@@ -22,9 +23,9 @@ class ExperimentRunner(object):
     This class creates the GAN, as well as the network for VGG Loss (VGG Net should be frozen)
     This class also creates the datasets
     """
-    def __init__(self, train_dataset_path, test_dataset_path, train_batch_size, test_batch_size, model_save_dir, num_epochs=100, num_data_loader_workers=10):
+    def __init__(self, train_dataset_path, test_dataset_path, train_batch_size, test_batch_size, model_save_dir, num_epochs=100, num_data_loader_workers=10, pretrained_person_inpainter=None):
         # GAN Network + VGG Loss Network
-        self.gan = DensePoseGAN()
+        self.gan = DensePoseGAN(pretrained_person_inpainter)
         self.vgg_loss_network = VGG19FeatureNet() #Frozen weights, pretrained
 
         # Network hyperparameters
@@ -66,7 +67,7 @@ class ExperimentRunner(object):
         self.txwriter = SummaryWriter()
         self.model_save_dir = model_save_dir
         self.save_freq = 5000
-        self.display_freq = 200
+        self.display_freq = 25
 
         self.gan = nn.DataParallel(self.gan)
         self.vgg_loss_network = nn.DataParallel(self.vgg_loss_network)
@@ -164,7 +165,7 @@ class ExperimentRunner(object):
 
                 # ============
                 # Run predictive GAN on source image
-                generated_img, classification_src = self.gan(src_img, src_iuv, target_iuv, use_gt=False)
+                generated_img, classification_src, = self.gan(src_img, src_iuv, target_iuv, use_gt=False)
                 # Run predictive GAN on target image
                 _ , classification_tgt = self.gan(target_img, src_iuv, target_iuv, use_gt=True)
                 # Create discriminator groundtruth
@@ -214,7 +215,7 @@ class ExperimentRunner(object):
                 """
                 Visualize some images
                 """
-                if current_step % self.display_freq == 6:
+                if current_step % self.display_freq == 0:
                     name1 = '{0}_{1}_{2}'.format(epoch, current_step, "image1")
                     name2 = '{0}_{1}_{2}'.format(epoch, current_step, "image2")
                     name3 = '{0}_{1}_{2}'.format(epoch, current_step, "gan_image")
@@ -239,7 +240,6 @@ class ExperimentRunner(object):
                     save_name = 'model_checkpoint.pth'
                     torch.save(self.gan.state_dict(), save_name)
                     print('Saved model to {}'.format(save_name))
-            return
                    
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -275,6 +275,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_epochs', type=int, default=100)
     parser.add_argument('--num_data_loader_workers', type=int, default=2)
     parser.add_argument('--model_save_dir', type=str, default='./models')
+    parser.add_argument('--pretrained-person-inpainter', type=str)
     args = parser.parse_args()
 
     # Create experiment runner object
@@ -285,6 +286,7 @@ if __name__ == "__main__":
                                           test_batch_size=args.test_batch_size, 
                                           model_save_dir=args.model_save_dir,
                                           num_epochs=args.num_epochs, 
-                                          num_data_loader_workers=args.num_data_loader_workers)
+                                          num_data_loader_workers=args.num_data_loader_workers,
+                                          pretrained_person_inpainter=args.pretrained_person_inpainter)
     # Train Models
     experiment_runner.train()

@@ -148,7 +148,7 @@ def main(args):
                     rescale_factor = 256 / min_dim
                     im_resize = cv2.resize(image, (0,0), fx=rescale_factor, fy=rescale_factor)
 
-                    crop_col_start = (im_resize.shape[1] // 2 - 1) - 127
+                    crop_col_start =s (im_resize.shape[1] // 2 - 1) - 127
                     crop_col_end = crop_col_start + 256
                     crop_row_start = (im_resize.shape[0] // 2 - 1) - 127
                     crop_row_end = crop_row_start + 256

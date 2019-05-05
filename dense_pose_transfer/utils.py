@@ -136,7 +136,7 @@ def plot_texture_map(texture):
         plt.axis('on')
         ax1.set_xticklabels([])
         ax1.set_yticklabels([])
-        ax1.imshow(texture[i,:,:,:].permute(1,2,0))
+        ax1.imshow(texture[i,:,:,:].detach().cpu().permute(1,2,0))
 
     plt.show()
 
