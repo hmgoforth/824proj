@@ -10,6 +10,7 @@ from scipy import ndimage
 import torchvision.models as M
 import torch.nn.functional as F
 from ucf_dataset import *
+from places2_dataset import *
 import torchvision.utils
 
 from networks import *
@@ -25,17 +26,19 @@ class ExperimentRunner(object):
     """
     def __init__(self, train_dataset_path, test_dataset_path, train_batch_size, test_batch_size, model_save_dir, num_epochs=100, num_data_loader_workers=10, pretrained_person_inpainter=None):
         # GAN Network + VGG Loss Network
-        self.gan = DensePoseGAN(pretrained_person_inpainter)
+        self.generator = UNet()
+        self.discriminator = Discriminator()
+
         self.vgg_loss_network = VGG19FeatureNet() #Frozen weights, pretrained
 
         # Network hyperparameters
-        self.gan_lr = 1.e-4
+        self.gen_lr = 1.e-4
         self.disc_lr = 1.e-4
         self.disc_lambda = 0.1
-        self.optimizerG = torch.optim.Adam([ {'params': self.gan.generator.parameters(), 'lr': self.gan_lr}
+        self.optimizerG = torch.optim.Adam([ {'params': self.generator.parameters(), 'lr': self.gan_lr}
                                             #{'params': self.gan.discriminator.parameters(), 'lr': self.disc_lr}
                                          ], betas=(0.5, 0.999))
-        self.optimizerD = torch.optim.Adam([ {'params': self.gan.discriminator.parameters(), 'lr': self.disc_lr}
+        self.optimizerD = torch.optim.Adam([ {'params': self.discriminator.parameters(), 'lr': self.disc_lr}
                                          ],betas=(0.5, 0.999))
         # Network losses
         self.BCECriterion = nn.BCEWithLogitsLoss().cuda()
