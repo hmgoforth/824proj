@@ -17,11 +17,11 @@ def read_image_and_iuv(path):
     image_path = path + '.jpg'
     #im = Image.open(image_path)
     #im = transform(im)
-    im = torch.from_numpy(io.imread(image_path)).permute(2,0,1).type(torch.cuda.FloatTensor)
+    im = torch.from_numpy(io.imread(image_path)/256.0).permute(2,0,1).type(torch.cuda.FloatTensor)
     iuv_path = path + '_IUV.png'
     #iuv = Image.open(iuv_path)
     #iuv = transform(iuv)
-    iuv = torch.from_numpy(io.imread(iuv_path)).permute(2,0,1).type(torch.cuda.FloatTensor)
+    iuv = torch.from_numpy(io.imread(iuv_path)/256.0).permute(2,0,1).type(torch.cuda.FloatTensor)
     return im, iuv
 
 def images_from_texture_and_iuv(texture_map, iuv):

@@ -25,18 +25,12 @@ def train(args, net, optimizer, train_dataloader, model_save_path):
         num_batches = len(train_dataloader)
 
         for batch_idx, batch_data in enumerate(train_dataloader):
-
             net.train()
             current_step = epoch * num_batches + batch_idx
             images = batch_data['images'].cuda() if use_cuda else batch_data['images']
-            images = images.view(images.size()[0]*images.size()[1], 3, 256, 256)
             iuvs = batch_data['iuvs'].cuda() if use_cuda else batch_data['iuvs']
-            iuvs = iuvs.view(iuvs.size()[0]*iuvs.size()[1], 3, 256, 256)
             target_iuvs = batch_data['target_iuvs'].cuda() if use_cuda else batch_data['target_iuvs']
-            target_iuvs = target_iuvs.view(target_iuvs.size()[0]*target_iuvs.size()[1], 3, 256, 256)
             target_images = batch_data['target_images'].cuda() if use_cuda else batch_data['target_iuvs']
-            target_images = target_images.view(target_images.size()[0]*target_images.size()[1], 3, 256, 256)
-            views = batch_data['views']
             index = 0
             #unpad_target_images = []
             #unpad_target_iuvs = []
