@@ -1,16 +1,19 @@
-from pretrained_model import train
+from train_predict import train
+import network
+from predict_data import DFDenseData
 from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.utils
+import numpy as np
+from torch.utils.data.sampler import SubsetRandomSampler
 
 import argparse
 from datetime import datetime
 
-import network
-import dataset
+
 import pdb
 
 def parse_args():
@@ -46,11 +49,11 @@ def parse_args():
     )
     parser.add_argument(
         '--num-epochs',
-        defualt=40,
+        default=40,
         type=int
     )
     parser.add_argument(
-        '--lr'
+        '--lr',
         default=2e-4,
         type=int,
     )
@@ -69,22 +72,50 @@ def parse_args():
         default=1000,
         type=int
     )
+    parser.add_argument(
+        '--loaded_images_h5py',
+        default=None,
+        type=str
+    )
+    parser.add_argument(
+        '--loaded_images_dir',
+        default=None,
+        type=str
+    )
+    parser.add_argument(
+        '--load_images',
+        default=False,
+        type=bool
+    )
     return parser.parse_args()
 
-def main(args):
+if __name__ == "__main__":
+    args = parse_args()
     model_save_path = args.model_save + str(datetime.today().day) + '_' + str(datetime.today().month)
 
-    predict_model = network.UNet
+    predict_model = network.PredictiveModel()
     use_cuda = torch.cuda.is_available()
     
     if use_cuda:
-        predict_model = net.cuda()
-    
-    optimizer = optim.Adam(net.parameters(), lr=args.lr, betas=(0.5, 0.999))
-    train_dataset = dataset.DeepfashionInpaintingDataset(args.filedict, args.pathtoind, args.textures)
+        predict_model = predict_model.cuda()
 
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True)
+    optimizer = optim.Adam(predict_model.parameters(), lr=4e-6, betas=(0.5, 0.999))
+    validation_split = 0.2
+    shuffle_dataset = True
+    random_seed = 42
 
-    train(args, predict_model, optimizer, train_dataset)    
+    dataset_size = int(7465)
+    indices = list(range(dataset_size))
+    split = int(np.floor(validation_split * dataset_size))
+    np.random.seed(random_seed)
+    np.random.shuffle(indices)
+    train_indices, test_indices = indices[split:], indices[:split]
+    train_sampler = SubsetRandomSampler(train_indices)
+    test_sampler = SubsetRandomSampler(test_indices)
+    train_dataset = DFDenseData(args.filedict)
+    test_dataset = DFDenseData(args.filedict)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch, sampler=train_sampler)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch, sampler=test_sampler)
+    train(args, predict_model, optimizer, train_dataloader, model_save_path) 
         
 

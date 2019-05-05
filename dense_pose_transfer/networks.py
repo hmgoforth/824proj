@@ -638,8 +638,8 @@ class ResidualBlock(nn.Module):
         x = self.conv2(input_mat)
         x += input_mat
         if self.classify:
-            x = self.classifier(x.permute(0,2,3,1)) 
-            return x.permute(0,3,1,2)
+            x = self.classifier(x.view(x.size()[0],x.size()[2],x.size()[3],x.size()[1])) 
+            return x.view(x.size()[0],x.size()[3],x.size()[1],x.size()[2])
         return x
 
 class BottleNeck(nn.Module):
@@ -733,9 +733,9 @@ class Blending(nn.Module):
        x3 = self.res1(x2)
        x4 = self.res2(x3)
        x5 = self.res3(x4) 
-       to_linear = x5.permute(0,2,3,1)
-       output = self.classify(to_linear)
-       return output.permute(0,3,1,2)
+       to_linear = x5.view(x5.size()[0],x5.size()[2],x5.size()[3],x5.size()[1])
+       o = self.classify(to_linear)
+       return o.view(o.size()[0],o.size()[3],o.size()[1],o.size()[2])
 
 ''' ################################
 
