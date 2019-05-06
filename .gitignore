@@ -13,3 +13,9 @@ posewarp/data/floss.mp4
 posewarp/data/floss_frames
 posewarp/data/jon_256.png
 places365_standard/
+dense_pose_transfer/bg_gen_model_checkpoint.pth
+dense_pose_transfer/bg_disc_model_checkpoint.pth
+UCF-dataset/preprocessed/
+UCF-dataset/ucf-densepose.tar.gz
+*.pth
+dense_pose_transfer/runs/

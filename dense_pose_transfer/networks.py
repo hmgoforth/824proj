@@ -135,76 +135,77 @@ class UNet(nn.Module):
     """
     UNet for background image inpainting
     """
-    def __init__(self, in_c=28, input_shape=256, nf_enc=[64]*2+[128]*9, nf_dec=[128]*4 + [64]):
+    def __init__(self, in_c=6, plus_c=24, input_shape=256, nf_enc=[64]*2+[128]*9, nf_dec=[128]*4 + [64]):
         super().__init__()
         self.conv0 = nn.Sequential(
             nn.Conv2d(in_channels=in_c, out_channels=nf_enc[0], kernel_size=7, padding=3, stride=1),
-            torch.nn.LeakyReLU()
+            torch.nn.LeakyReLU(0.2)
         )
         self.conv1 = nn.Sequential(
-            nn.Conv2d(in_channels=nf_enc[0], out_channels=nf_enc[1], kernel_size=3, padding=1,stride=2),
-            torch.nn.LeakyReLU()               
+            nn.Conv2d(in_channels=plus_c+nf_enc[0], out_channels=nf_enc[1], kernel_size=3, padding=1,stride=2),
+            torch.nn.LeakyReLU(0.2)               
         )
         self.conv2 = nn.Sequential(
             nn.Conv2d(in_channels=nf_enc[1], out_channels=nf_enc[2], kernel_size=3, padding=1,stride=1),
-            torch.nn.LeakyReLU()              
+            torch.nn.LeakyReLU(0.2)              
         )
         self.conv3 = nn.Sequential(
             nn.Conv2d(in_channels=nf_enc[2], out_channels=nf_enc[3], kernel_size=3, padding=1,stride=2),
-            torch.nn.LeakyReLU()              
+            torch.nn.LeakyReLU(0.2)              
         )
         self.conv4 = nn.Sequential(
             nn.Conv2d(in_channels=nf_enc[3], out_channels=nf_enc[4], kernel_size=3, padding=1,stride=1),
-            torch.nn.LeakyReLU()              
+            torch.nn.LeakyReLU(0.2)              
         )
         self.conv5 = nn.Sequential(
             nn.Conv2d(in_channels=nf_enc[4], out_channels=nf_enc[5], kernel_size=3, padding=1,stride=2),
-            torch.nn.LeakyReLU()              
+            torch.nn.LeakyReLU(0.2)              
         )
         self.conv6 = nn.Sequential(
             nn.Conv2d(in_channels=nf_enc[5], out_channels=nf_enc[6], kernel_size=3, padding=1,stride=1),
-            torch.nn.LeakyReLU()              
+            torch.nn.LeakyReLU(0.2)              
         )
         self.conv7 = nn.Sequential(
             nn.Conv2d(in_channels=nf_enc[6], out_channels=nf_enc[7], kernel_size=3, padding=1,stride=2),
-            torch.nn.LeakyReLU()              
+            torch.nn.LeakyReLU(0.2)              
         )
         self.conv8 = nn.Sequential(
             nn.Conv2d(in_channels=nf_enc[7], out_channels=nf_enc[8], kernel_size=3, padding=1,stride=1),
-            torch.nn.LeakyReLU()              
+            torch.nn.LeakyReLU(0.2)              
         )
         self.conv9 = nn.Sequential(
             nn.Conv2d(in_channels=nf_enc[8], out_channels=nf_enc[9], kernel_size=3, padding=1,stride=2),
-            torch.nn.LeakyReLU()              
+            torch.nn.LeakyReLU(0.2)              
         )
         self.conv10 = nn.Sequential(
             nn.Conv2d(in_channels=nf_enc[9], out_channels=nf_enc[10], kernel_size=3, padding=1,stride=1),
-            torch.nn.LeakyReLU()              
+            torch.nn.LeakyReLU(0.2)              
         )
 
         self.deconv0 = nn.Sequential(
             nn.Conv2d(in_channels=nf_enc[10]+nf_enc[8], out_channels=nf_dec[0], kernel_size=3, padding=1,stride=1),
-            torch.nn.LeakyReLU()              
+            torch.nn.LeakyReLU(0.2)              
         )
         self.deconv1 = nn.Sequential(
             nn.Conv2d(in_channels=nf_dec[0]+nf_enc[6], out_channels=nf_dec[1], kernel_size=3, padding=1,stride=1),
-            torch.nn.LeakyReLU()              
+            torch.nn.LeakyReLU(0.2)              
         )
         self.deconv2 = nn.Sequential(
             nn.Conv2d(in_channels=nf_dec[1]+nf_enc[4], out_channels=nf_dec[2], kernel_size=3, padding=1,stride=1),
-            torch.nn.LeakyReLU()              
+            torch.nn.LeakyReLU(0.2)              
         )
         self.deconv3 = nn.Sequential(
             nn.Conv2d(in_channels=nf_dec[2]+nf_enc[2], out_channels=nf_dec[3], kernel_size=3, padding=1,stride=1),
-            torch.nn.LeakyReLU()              
+            torch.nn.LeakyReLU(0.2)              
         )
         self.deconv4 = nn.Sequential(
             nn.Conv2d(in_channels=nf_dec[3]+nf_enc[0], out_channels=nf_dec[4], kernel_size=3, padding=1,stride=1),
-            torch.nn.LeakyReLU()              
+            torch.nn.LeakyReLU(0.2)              
         )
 
         self.finalConv = nn.Sequential(
             nn.Conv2d(in_channels=nf_dec[4], out_channels=3, kernel_size=3, padding=1,stride=1),
+            torch.nn.LeakyReLU(0.2),
             torch.nn.Tanh()              
         )
 
@@ -235,8 +236,9 @@ class UNet(nn.Module):
         # Input is Body mask, invert it
         mask = mask == 0
         mask = mask.float()
-        x_in = torch.cat((image*mask, mask.float(), pose.float()),dim=1) #256
-        x0 = self.conv0(x_in) #256
+        x_in = image*mask #256
+        x_in = self.conv0(torch.cat((x_in, mask.repeat(1,3,1,1)),dim=1))
+        x0 = torch.cat((x_in, pose.float()),dim=1) #256
         x1 = self.conv1(x0)
         x2 = self.conv2(x1) #128
         x3 = self.conv3(x2) 
@@ -266,7 +268,7 @@ class UNet(nn.Module):
         x = self.deconv3(x) #128
 
         x = self.upSample(x)
-        x = torch.cat((x, x0),dim=1)
+        x = torch.cat((x, x_in),dim=1)
         x = self.deconv4(x) #256, channels=64
         xfinal = self.finalConv(x) #channels now at 3
         # print(xfinal.shape) 
@@ -327,7 +329,8 @@ BEGIN LOSS FUNCTIONS
 ''' #################
 
 def vgg_preprocess(x_in):
-    z = 255.0 * (x_in + 1.0) / 2.0
+    #z = 255.0 * (x_in + 1.0) / 2.0
+    z = 255.0 * x_in
     z[:, 0, :, :] -= 103.939
     z[:, 1, :, :] -= 116.779
     z[:, 2, :, :] -= 123.68
@@ -344,9 +347,8 @@ class VGG19FeatureNet(nn.Module):
             param.requires_grad = False
 
     def forward(self, img):
-        # Assume input is from -1 to 1 --> preprocess
         # If image is 0 to 1, we are fine
-        return self.features(img)
+        return self.features(vgg_preprocess(img))
 
 class VGGLoss(nn.Module):
     def __init__(self):
