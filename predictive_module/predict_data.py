@@ -42,7 +42,6 @@ class DFDenseData(Dataset):
                 loaded_filedict = pkl.load(fp)
             self.loaded_filedict = loaded_filedict
             self.filelist = loaded_filedict['filelist']
-            self.max_multiview = loaded_filedict['max_multiview']
         else:
             print("No filedict added!!")
  
@@ -54,15 +53,16 @@ class DFDenseData(Dataset):
         item = self.filelist[int(idx)]
         item_path = item['path']
         im, iuv = utils.read_image_and_iuv(item_path)
-        train_images = torch.zeros(self.max_multiview, 3, 256, 256)
-        train_iuvs = torch.zeros(self.max_multiview, 3, 256, 256)
-        target_iuvs = torch.zeros(self.max_multiview, 3, 256, 256)
-        target_images = torch.zeros(self.max_multiview, 3, 256, 256)
-        for view_path in enumerate(item['views']):
-            target_im, target_iuv = utils.read_image_and_iuv(view_path[1])
-            target_iuvs[view_path[0], :, :, :] = target_iuv
-            target_images[view_path[0], :, :, :] = target_im
-            train_iuvs[view_path[0], :, :, :] = iuv
-            train_images[view_path[0], :, :, :] = im
+        #train_images = torch.zeros(self.max_multiview, 3, 256, 256)
+        #train_iuvs = torch.zeros(self.max_multiview, 3, 256, 256)
+        #target_iuvs = torch.zeros(self.max_multiview, 3, 256, 256)
+        #target_images = torch.zeros(self.max_multiview, 3, 256, 256)
+        #for view_path in enumerate(item['views']):
+        view_path = item['view']
+        target_im, target_iuv = utils.read_image_and_iuv(view_path)
+            #target_iuvs[view_path[0], :, :, :] = target_iuv
+            #target_images[view_path[0], :, :, :] = target_im
+            #train_iuvs[view_path[0], :, :, :] = iuv
+            #train_images[view_path[0], :, :, :] = im
              
-        return {'images':train_images, 'iuvs':train_iuvs,  'target_iuvs':target_iuvs, 'target_images':target_images, 'views':len(item['views'])}
+        return {'images':im, 'iuvs':iuv,  'target_iuvs':target_iuv, 'target_images':target_im}

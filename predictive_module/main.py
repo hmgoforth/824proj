@@ -104,7 +104,7 @@ if __name__ == "__main__":
     shuffle_dataset = True
     random_seed = 42
 
-    dataset_size = int(7465)
+    dataset_size = int(25524)
     indices = list(range(dataset_size))
     split = int(np.floor(validation_split * dataset_size))
     np.random.seed(random_seed)
@@ -112,10 +112,10 @@ if __name__ == "__main__":
     train_indices, test_indices = indices[split:], indices[:split]
     train_sampler = SubsetRandomSampler(train_indices)
     test_sampler = SubsetRandomSampler(test_indices)
-    train_dataset = DFDenseData(args.filedict)
-    test_dataset = DFDenseData(args.filedict)
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch, sampler=train_sampler)
-    test_dataloader = DataLoader(test_dataset, batch_size=args.batch, sampler=test_sampler)
+    dataset = DFDenseData(args.filedict)
+    dataset[0]
+    train_dataloader = DataLoader(dataset, batch_size=args.batch, sampler=train_sampler)
+    test_dataloader = DataLoader(dataset, batch_size=args.batch, sampler=test_sampler)
     train(args, predict_model, optimizer, train_dataloader, model_save_path) 
         
 
