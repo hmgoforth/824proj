@@ -23,9 +23,9 @@ class ExperimentRunner(object):
     This class creates the GAN, as well as the network for VGG Loss (VGG Net should be frozen)
     This class also creates the datasets
     """
-    def __init__(self, train_dataset_path, test_dataset_path, train_batch_size, test_batch_size, model_save_dir, num_epochs=100, num_data_loader_workers=10, pretrained_person_inpainter=None):
+    def __init__(self, train_dataset_path, test_dataset_path, train_batch_size, test_batch_size, model_save_dir, num_epochs=100, num_data_loader_workers=10, pretrained_person_inpainter=None, pretrained_bg_inpainter=None):
         # GAN Network + VGG Loss Network
-        self.gan = DensePoseGAN(pretrained_person_inpainter)
+        self.gan = DensePoseGAN(pretrained_person_inpainter, pretrained_bg_inpainter)
         self.vgg_loss_network = VGG19FeatureNet() #Frozen weights, pretrained
 
         # Network hyperparameters
@@ -277,6 +277,8 @@ if __name__ == "__main__":
     parser.add_argument('--num_data_loader_workers', type=int, default=2)
     parser.add_argument('--model_save_dir', type=str, default='./models')
     parser.add_argument('--pretrained-person-inpainter', type=str)
+    parser.add_argument('--pretrained_bg_inpainter', type=str, default='./bg_gen_model_checkpoint.pth')
+
     args = parser.parse_args()
 
     # Create experiment runner object
@@ -288,6 +290,7 @@ if __name__ == "__main__":
                                           model_save_dir=args.model_save_dir,
                                           num_epochs=args.num_epochs, 
                                           num_data_loader_workers=args.num_data_loader_workers,
-                                          pretrained_person_inpainter=args.pretrained_person_inpainter)
+                                          pretrained_person_inpainter=args.pretrained_person_inpainter,
+                                          pretrained_bg_inpainter=args.pretrained_bg_inpainter)
     # Train Models
     experiment_runner.train()
