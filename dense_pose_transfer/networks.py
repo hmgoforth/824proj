@@ -618,30 +618,21 @@ class EncodeBlock(nn.Module):
         return block_output
 
 class ResidualBlock(nn.Module):
-    def __init__(self, channels, num_features=64, classify=True):
+    def __init__(self, channels, num_features=64):
         super(ResidualBlock, self).__init__()
-        self.classify = classify
         self.conv1 = nn.Sequential(
             nn.Dropout(0.4),
             nn.Conv2d(channels, num_features, 1, 1, padding=0, bias=False),
             nn.BatchNorm2d(num_features),
-            nn.ReLU()
-        
-        )
+            nn.ReLU())
         self.conv2 = nn.Sequential(
             nn.Conv2d(num_features, num_features, 3, 1, padding=1, bias=False),
             nn.BatchNorm2d(num_features),
-            nn.ReLU()
-        )
-        if classify:
-            self.classifier = nn.Linear(num_features, num_features)
+            nn.ReLU())
     def forward(self, input_mat):
         input_mat = self.conv1(input_mat)
         x = self.conv2(input_mat)
         x += input_mat
-        if self.classify:
-            x = self.classifier(x.view(x.size()[0],x.size()[2],x.size()[3],x.size()[1])) 
-            return x.view(x.size()[0],x.size()[3],x.size()[1],x.size()[2])
         return x
 
 class BottleNeck(nn.Module):

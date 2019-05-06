@@ -19,9 +19,8 @@ class EncodeBlock(nn.Module):
         return block_output
 
 class ResidualBlock(nn.Module):
-    def __init__(self, channels, num_features=64, classify=True):
+    def __init__(self, channels, num_features=64):
         super(ResidualBlock, self).__init__()
-        self.classify = classify
         self.conv1 = nn.Sequential(
             nn.Dropout(0.4),
             nn.Conv2d(channels, num_features, 1, 1, padding=0, bias=False),
@@ -31,15 +30,10 @@ class ResidualBlock(nn.Module):
             nn.Conv2d(num_features, num_features, 3, 1, padding=1, bias=False),
             nn.BatchNorm2d(num_features),
             nn.ReLU())
-        if classify:
-            self.classifier = nn.Linear(num_features, num_features)
     def forward(self, input_mat):
         input_mat = self.conv1(input_mat)
         x = self.conv2(input_mat)
         x += input_mat
-        if self.classify:
-            x = self.classifier(x.view(x.size()[0],x.size()[2],x.size()[3],x.size()[1])) 
-            return x.view(x.size()[0],x.size()[3],x.size()[1],x.size()[2])
         return x
 
 class BottleNeck(nn.Module):
@@ -66,9 +60,9 @@ class PredictiveModel(nn.Module):
         #Input is 256x256x9 of DensePose result
         batches, channels, height, width = img_shape
 
-        self.enc_block1 = EncodeBlock(channels, num_features) # output: B x 64 x 256 x 256
-        self.enc_block2 = EncodeBlock(num_features, num_features*2) # output: B x 128 x 128 x 128
-        self.enc_block3 = EncodeBlock(num_features*2, num_features*4) # output: B x 256 x 64 x 64
+        self.enc_block1 = EncodeBlock(9, 64) # output: B x 64 x 256 x 256
+        self.enc_block2 = EncodeBlock(64, 128) # output: B x 128 x 128 x 128
+        self.enc_block3 = EncodeBlock(128, 256) # output: B x 256 x 64 x 64
  
         self.bottle = BottleNeck() # output: B x 256 x 64 x 64
 
@@ -107,11 +101,11 @@ class Blending(nn.Module):
         # target dense pose: B x 3 x 256 x 256
         channels = im_size[1]
 
-        self.conv1 = nn.Conv2d(channels, num_features, 3, 1, 1)
-        self.conv2 = nn.Conv2d(num_features, num_features, 3, 1, 1)
-        self.res1 = ResidualBlock(num_features, num_features)
-        self.res2 = ResidualBlock(num_features, num_features)
-        self.res3 = ResidualBlock(num_features, num_features, classify=False)
+        self.conv1 = nn.Conv2d(9, 64, 3, 1, 1)
+        self.conv2 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.res1 = ResidualBlock(64, 64)
+        self.res2 = ResidualBlock(64, 64)
+        self.res3 = ResidualBlock(64, 64)
         self.classify = nn.Linear(num_features, 3)
         
     def forward(self, input_mat):
