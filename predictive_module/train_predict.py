@@ -73,11 +73,11 @@ def train(args, net, optimizer, train_dataloader, model_save_path):
             if current_step % args.image_log_freq == 0:
                 #predicted_image = unNormalize(predicted_images[2,:,:,:])
                 #target_image = unNormalize(target_images[2, :,:,:])
-                predicted_image = predicted_images[2,:,:,:]
-                target_image = target_images[2,:,:,:]
-                target_iuv = target_iuvs[2,:,:,:]
-                image = images[2,:,:,:]
-                iuv = iuvs[2,:,:,:]
+                predicted_image = unNormalize(predicted_images[2,:,:,:])
+                target_image = unNormalize(target_images[2,:,:,:])
+                target_iuv = unNormalize(target_iuvs[2,:,:,:])
+                image = unNormalize(images[2,:,:,:])
+                iuv = unNormalize(iuvs[2,:,:,:])
                  
                 partgrid = torchvision.utils.make_grid(torch.stack((image, iuv, target_image, target_iuv, predicted_image)), nrow=2, padding=0)
                 tboard.add_image('train/predicted_{:d}'.format(current_step), partgrid, current_step)

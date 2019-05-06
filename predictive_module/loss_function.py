@@ -9,6 +9,6 @@ def pred_loss(predicted_image, target_image):
         valid_mask = target_image > 0
         masked_prediction = predicted_image * valid_mask.float()
 	predicted_loss = masked_prediction - target_image
-	loss = torch.mean(torch.abs(predicted_loss))
+	loss = torch.sum(torch.abs(predicted_loss))
 
 	return loss

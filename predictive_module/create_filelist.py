@@ -42,6 +42,8 @@ def main(args):
 
     for root, dirs, files in os.walk(args.deepfashion):
         for file in files:
+            if "additional" in file:
+                continue
             if file.endswith("IUV.png"): # only look for valid files
                 item_name = '_'.join(os.path.splitext(file)[0].split('_')[:-1])
                 item_path = os.path.join(root, item_name)
@@ -50,6 +52,8 @@ def main(args):
 
                 for other_view in files:
                     if other_view != file: # not current file
+                        if "additional" in other_view:
+                            continue
                         if other_view.endswith("IUV.png"):
                             this_view_id = os.path.splitext(other_view)[0].split('_')[0]
 

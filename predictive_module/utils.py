@@ -9,19 +9,19 @@ import pdb
 
 def read_image_and_iuv(path):
     # read image and IUV from base path
-    #transform = transforms.Compose([
-    #    transforms.Resize((256, 256)),
-    #    transforms.ToTensor(),
-    #    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    #])
+    transform = transforms.Compose([
+        #transforms.Resize((256, 256)),
+        #transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
     image_path = path + '.jpg'
     #im = Image.open(image_path)
-    #im = transform(im)
     im = torch.from_numpy(io.imread(image_path)/256.0).permute(2,0,1).type(torch.cuda.FloatTensor)
+    im = transform(im)
     iuv_path = path + '_IUV.png'
     #iuv = Image.open(iuv_path)
-    #iuv = transform(iuv)
     iuv = torch.from_numpy(io.imread(iuv_path)/256.0).permute(2,0,1).type(torch.cuda.FloatTensor)
+    iuv = transform(iuv)
     return im, iuv
 
 def images_from_texture_and_iuv(texture_map, iuv):
