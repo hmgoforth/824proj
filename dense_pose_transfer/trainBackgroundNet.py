@@ -24,7 +24,7 @@ class ExperimentRunner(object):
     This class creates the GAN, as well as the network for VGG Loss (VGG Net should be frozen)
     This class also creates the datasets
     """
-    def __init__(self, train_dataset_path, test_dataset_path, train_batch_size, test_batch_size, model_save_dir, num_epochs=100, num_data_loader_workers=10, pretrained_person_inpainter=None):
+    def __init__(self, train_dataset_path, test_dataset_path, places2_filelist_path_train, places2_filelist_path_test, places2_basepath,train_batch_size, test_batch_size, model_save_dir, num_epochs=100, num_data_loader_workers=10, pretrained_person_inpainter=None):
         # GAN Network + VGG Loss Network
         self.generator = UNet()
         self.discriminator = Discriminator()
@@ -35,7 +35,8 @@ class ExperimentRunner(object):
         self.gen_lr = 1.e-4
         self.disc_lr = 1.e-4
         self.disc_lambda = 0.1
-        self.optimizerG = torch.optim.Adam([ {'params': self.generator.parameters(), 'lr': self.gan_lr}
+        self.l1_lambda = 0.2
+        self.optimizerG = torch.optim.Adam([ {'params': self.generator.parameters(), 'lr': self.gen_lr}
                                             #{'params': self.gan.discriminator.parameters(), 'lr': self.disc_lr}
                                          ], betas=(0.5, 0.999))
         self.optimizerD = torch.optim.Adam([ {'params': self.discriminator.parameters(), 'lr': self.disc_lr}
@@ -43,6 +44,7 @@ class ExperimentRunner(object):
         # Network losses
         self.BCECriterion = nn.BCEWithLogitsLoss().cuda()
         self.VGGLoss = VGGLoss().cuda()
+        self.ImageL1Loss = nn.L1Loss().cuda()
 
         # Train settings + log settings
         self.num_epochs = num_epochs
@@ -53,8 +55,8 @@ class ExperimentRunner(object):
         self.test_batch_size = test_batch_size
 
         # Create datasets
-        self.train_dataset = UCFDensePoseTransferDataset(train_dataset_path)
-        self.test_dataset = UCFDensePoseTransferDataset(test_dataset_path)
+        self.train_dataset = Places2DatasetUFCMasks(train_dataset_path, places2_filelist_path_train, places2_basepath)
+        self.test_dataset = Places2DatasetUFCMasks(test_dataset_path, places2_filelist_path_test, places2_basepath)
 
         self.train_dataset_loader = DataLoader(self.train_dataset, batch_size=self.train_batch_size, shuffle=True, num_workers=num_data_loader_workers)
         self.test_dataset_loader = DataLoader(self.test_dataset, batch_size=self.test_batch_size, shuffle=False, num_workers=num_data_loader_workers)
@@ -63,16 +65,18 @@ class ExperimentRunner(object):
         self.cuda = torch.cuda.is_available()
 
         if self.cuda:
-            self.gan.cuda()
+            self.generator.cuda()
+            self.discriminator.cuda()
             self.vgg_loss_network.cuda()
 
         # Tensorboard logger
         self.txwriter = SummaryWriter()
         self.model_save_dir = model_save_dir
         self.save_freq = 5000
-        self.display_freq = 25
+        self.display_freq = 1000
 
-        self.gan = nn.DataParallel(self.gan)
+        self.generator = nn.DataParallel(self.generator)
+        self.discriminator = nn.DataParallel(self.discriminator)
         self.vgg_loss_network = nn.DataParallel(self.vgg_loss_network)
 
     def _optimizeGAN(self, pred_img, gt_img, y_pred, y_gt):
@@ -80,7 +84,7 @@ class ExperimentRunner(object):
         VGGLoss + GAN loss
         """
         self.optimizerG.zero_grad()
-        loss = self.disc_lambda * self.BCECriterion(y_pred, y_gt) + self.VGGLoss(pred_img, gt_img)
+        loss = self.disc_lambda * self.BCECriterion(y_pred, y_gt) + self.VGGLoss(pred_img, gt_img) + self.l1_lambda * self.ImageL1Loss(pred_img, gt_img)
         loss.backward()
         self.optimizerG.step()
         return loss
@@ -155,22 +159,29 @@ class ExperimentRunner(object):
             train_accuracies = AverageMeter()
 
             for batch_id, batch_data in enumerate(self.train_dataset_loader):
-                self.gan.train()  # Set the model to train mode
+                self.generator.train()  # Set the model to train mode
+                self.discriminator.train()  # Set the model to train mode
                 self.vgg_loss_network.eval()
                 current_step = epoch * num_batches + batch_id
 
                 # Get data from dataset
                 src_img = batch_data['im'].cuda(async=True)
-                target_img = batch_data['target_im'].cuda(async=True)
                 src_iuv = batch_data['im_iuv'].cuda(async=True)
                 target_iuv = batch_data['target_iuv'].cuda(async=True)
+                target_img = src_img
+                src_body_mask, src_part_mask = utils.get_body_and_part_mask_from_iuv(src_iuv)
+                tgt_body_mask, tgt_part_mask = utils.get_body_and_part_mask_from_iuv(target_iuv)
+                src_part_mask = src_part_mask.float()
+                tgt_part_mask = tgt_part_mask.float()
                 #pdb.set_trace()
 
                 # ============
                 # Run predictive GAN on source image
-                _, classification_src = self.gan(src_img, src_iuv, target_iuv, use_gt=False)
+                gen_img = self.generator(src_img, src_body_mask, src_part_mask)
+                classification_src = self.discriminator(gen_img, src_part_mask, tgt_part_mask)
+
                 # Run predictive GAN on target image
-                _ , classification_tgt = self.gan(target_img, src_iuv, target_iuv, use_gt=True)
+                classification_tgt = self.discriminator(target_img, src_part_mask, tgt_part_mask)
                 # Create discriminator groundtruth
                 # For src, we create zeros
                 # For tgt, we create ones
@@ -195,8 +206,9 @@ class ExperimentRunner(object):
                 # ============
                 # Optimize the GAN
                 # Note that now we use disc_gt_tgt which are 1's
-                generated_img, classification_src = self.gan(src_img, src_iuv, target_iuv, use_gt=False)
-                tot_loss = self._optimizeGAN(generated_img, target_img, classification_src, disc_gt_tgt)
+                gen_img = self.generator(src_img, src_body_mask, src_part_mask)
+                classification_src = self.discriminator(gen_img, src_part_mask, tgt_part_mask)
+                tot_loss = self._optimizeGAN(gen_img, target_img, classification_src, disc_gt_tgt)
                 tot_losses.update(tot_loss.item(), disc_gt_tgt.shape[0])
 
                 acc = 100.0 * torch.mean( ( torch.round(F.softmax(classification_src, dim=1)) == disc_gt_tgt ).float() )
@@ -225,7 +237,7 @@ class ExperimentRunner(object):
                     name3 = '{0}_{1}_{2}'.format(epoch, current_step, "gan_image")
                     im1 = denormalizeImage(src_img[0,:,:,:].cpu().numpy())
                     im2 = denormalizeImage(target_img[0,:,:,:].cpu().numpy())
-                    im3 = denormalizeImage(generated_img[0,:,:,:].detach().cpu().numpy())
+                    im3 = denormalizeImage(gen_img[0,:,:,:].detach().cpu().numpy())
                     self.txwriter.add_image("Image1/"+name1,im1)
                     self.txwriter.add_image("Image2/"+name2,im2)
                     self.txwriter.add_image("GAN/"+name3,im3)
@@ -241,8 +253,11 @@ class ExperimentRunner(object):
                 Save Model periodically
                 """
                 if (current_step % self.save_freq == 0) and current_step > 0:
-                    save_name = 'model_checkpoint.pth'
-                    torch.save(self.gan.state_dict(), save_name)
+                    save_name = 'bg_gen_model_checkpoint.pth'
+                    torch.save(self.generator.state_dict(), save_name)
+                    print('Saved model to {}'.format(save_name))
+                    save_name = 'bg_disc_model_checkpoint.pth'
+                    torch.save(self.discriminator.state_dict(), save_name)
                     print('Saved model to {}'.format(save_name))
                    
 class AverageMeter(object):
@@ -274,18 +289,24 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run Densepose Transfer Network.')
     parser.add_argument('--train_dataset_path', type=str, default='./ucf_train_list.txt')
     parser.add_argument('--test_dataset_path', type=str, default='./ucf_test_list.txt')
-    parser.add_argument('--train_batch_size', type=int, default=2)
-    parser.add_argument('--test_batch_size', type=int, default=2)
+    parser.add_argument('--train_batch_size', type=int, default=4)
+    parser.add_argument('--test_batch_size', type=int, default=4)
     parser.add_argument('--num_epochs', type=int, default=100)
-    parser.add_argument('--num_data_loader_workers', type=int, default=2)
+    parser.add_argument('--num_data_loader_workers', type=int, default=4)
     parser.add_argument('--model_save_dir', type=str, default='./models')
     parser.add_argument('--pretrained-person-inpainter', type=str)
+    parser.add_argument('--places2_filelist_path_train', type=str, default='../places365_standard/train.txt')
+    parser.add_argument('--places2_filelist_path_test', type=str, default='../places365_standard/val.txt')
+    parser.add_argument('--places2_basepath', type=str, default='../places365_standard/')
     args = parser.parse_args()
 
     # Create experiment runner object
     # Loads data, creates models
     experiment_runner = ExperimentRunner( train_dataset_path=args.train_dataset_path,
                                           test_dataset_path=args.test_dataset_path, 
+                                          places2_filelist_path_train=args.places2_filelist_path_train,
+                                          places2_filelist_path_test=args.places2_filelist_path_test,
+                                          places2_basepath=args.places2_basepath,
                                           train_batch_size=args.train_batch_size,
                                           test_batch_size=args.test_batch_size, 
                                           model_save_dir=args.model_save_dir,
