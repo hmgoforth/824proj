@@ -15,6 +15,9 @@ from collections import OrderedDict
 
 import utils
 
+NORM = transforms.Normalize(
+    mean[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
 ''' #################
 
 BEGIN TOP LEVEL GAN NETWORK
@@ -25,7 +28,7 @@ class DensePoseGAN(nn.Module):
     '''
     Combines DensePoseTransferNet, and Discriminator
     '''
-    def __init__(self, pretrained_person_inpainter=None, pretrained_background_inpainter=None, pretrained_predictive_module=None):
+    def __init__(self, pretrained_person_inpainter=None, pretrained_background_inpainter=None, pretrained_predictive_module=None, debug=False):
         super().__init__()
         # initialize Generator Network
         self.generator = DensePoseTransferNet(pretrained_person_inpainter, pretrained_background_inpainter, pretrained_predictive_module)
@@ -111,7 +114,11 @@ class DensePoseTransferNet(nn.Module):
         target_body_mask, target_part_mask = utils.get_body_and_part_mask_from_iuv(target_iuv)
 
         # predictive
-        predictive_result = self.predictive_module(source_im * source_body_mask.float(), source_iuv, target_iuv)
+        assert len(source_im[source_im > 1.0]) == 0, "Source image not between 0 and 1"
+        pred_transform = transforms.Compose([NORM])
+        predictive_source_im = pred_transform(source_im)
+        predictive_result = self.predictive_module(predictive_source_im * source_body_mask.float(), source_iuv, target_iuv)
+        assert len(source_im[source_im < 0.0]) == 0, "Source image for other networks is mean/std normalized"
 
         # warping
         source_texture_map = utils.texture_from_images_and_iuv(source_im, source_iuv)
