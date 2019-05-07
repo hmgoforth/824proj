@@ -30,6 +30,7 @@ class DensePoseGAN(nn.Module):
     '''
     def __init__(self, pretrained_person_inpainter=None, pretrained_background_inpainter=None, pretrained_predictive_module=None, debug=False):
         super().__init__()
+        self._debug = debug
         # initialize Generator Network
         self.generator = DensePoseTransferNet(pretrained_person_inpainter, pretrained_background_inpainter, pretrained_predictive_module)
 
@@ -74,8 +75,9 @@ class DensePoseTransferNet(nn.Module):
     '''
     Combines predictive module, warping module, and background inpainting network
     '''
-    def __init__(self, pretrained_person_inpainter=None, pretrained_background_inpainter=None, pretrained_predictive_module=None):
+    def __init__(self, pretrained_person_inpainter=None, pretrained_background_inpainter=None, pretrained_predictive_module=None, debug=False):
         super().__init__()
+        self._debug = debug
         # initialize predictive module
         self.predictive_module = PredictiveModel()
 
@@ -114,11 +116,13 @@ class DensePoseTransferNet(nn.Module):
         target_body_mask, target_part_mask = utils.get_body_and_part_mask_from_iuv(target_iuv)
 
         # predictive
-        assert len(source_im[source_im > 1.0]) == 0, "Source image not between 0 and 1"
+        if self._debug:
+            assert len(source_im[source_im > 1.0]) == 0, "Source image not between 0 and 1"
         pred_transform = transforms.Compose([NORM])
         predictive_source_im = pred_transform(source_im)
         predictive_result = self.predictive_module(predictive_source_im * source_body_mask.float(), source_iuv, target_iuv)
-        assert len(source_im[source_im < 0.0]) == 0, "Source image for other networks is mean/std normalized"
+        if self._debug:
+            assert len(source_im[source_im < 0.0]) == 0, "Source image for other networks is mean/std normalized"
 
         # warping
         source_texture_map = utils.texture_from_images_and_iuv(source_im, source_iuv)
