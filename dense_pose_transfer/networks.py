@@ -23,10 +23,10 @@ class DensePoseGAN(nn.Module):
     '''
     Combines DensePoseTransferNet, and Discriminator
     '''
-    def __init__(self, pretrained_person_inpainter=None, pretrained_background_inpainter=None):
+    def __init__(self, pretrained_person_inpainter=None, pretrained_background_inpainter=None, pretrained_predictive_module=None):
         super().__init__()
         # initialize Generator Network
-        self.generator = DensePoseTransferNet(pretrained_person_inpainter, pretrained_background_inpainter)
+        self.generator = DensePoseTransferNet(pretrained_person_inpainter, pretrained_background_inpainter, pretrained_predictive_module)
 
         # initialize Discriminator Network
         self.discriminator = Discriminator()
@@ -69,10 +69,15 @@ class DensePoseTransferNet(nn.Module):
     '''
     Combines predictive module, warping module, and background inpainting network
     '''
-    def __init__(self, pretrained_person_inpainter=None, pretrained_background_inpainter=None):
+    def __init__(self, pretrained_person_inpainter=None, pretrained_background_inpainter=None, pretrained_predictive_module=None):
         super().__init__()
         # initialize predictive module
         self.predictive_module = PredictiveModel()
+
+        if pretrained_predictive is not None:
+            print('LOADING PRETRAINED PREDICTIVE MODULE')
+            self.predictive_module.load_state_dict(torch.load(pretrained_predictive_module))
+
         # initialize warping module
         self.warping_module = InpaintingAutoencoder()
 
