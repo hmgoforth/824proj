@@ -107,8 +107,11 @@ class DensePoseTransferNet(nn.Module):
         # source_iuv: B x (I, U, V) x 256 x 256
         # target_iuv: B x (I, U, V) x 256 x 256
 
+        source_body_mask, source_part_mask = utils.get_body_and_part_mask_from_iuv(source_iuv)
+        target_body_mask, target_part_mask = utils.get_body_and_part_mask_from_iuv(target_iuv)
+
         # predictive
-        predictive_result = self.predictive_module(source_im, source_iuv, target_iuv)
+        predictive_result = self.predictive_module(source_im * source_body_mask.float(), source_iuv, target_iuv)
 
         # warping
         source_texture_map = utils.texture_from_images_and_iuv(source_im, source_iuv)
@@ -118,9 +121,6 @@ class DensePoseTransferNet(nn.Module):
         warping_result = utils.images_from_texture_and_iuv_batch(inpainted_source_texture_map, target_iuv)
 
         # background inpainting
-        source_body_mask, source_part_mask = utils.get_body_and_part_mask_from_iuv(source_iuv)
-        target_body_mask, target_part_mask = utils.get_body_and_part_mask_from_iuv(target_iuv)
-
         # KEVIN: INPUT MASKS SHOULD BE SCALED TO 255 OR 1?
         # Answer: Masks should be float32's from 0 to 1
         inpainted_bg = self.bg_inpainting(source_im, source_body_mask, source_part_mask)
@@ -733,8 +733,9 @@ class Blending(nn.Module):
         self.conv2 = nn.Conv2d(num_features, num_features, 3, 1, 1)
         self.res1 = ResidualBlock(num_features, num_features)
         self.res2 = ResidualBlock(num_features, num_features)
-        self.res3 = ResidualBlock(num_features, num_features)
-        self.classify = nn.Linear(num_features, 3)
+        # self.res3 = ResidualBlock(num_features, num_features)
+        # self.classify = nn.Linear(num_features, 3)
+        self.res3 = ResidualBlock(num_features, 3)
         
     def forward(self, pred_output, warp_output, target_pose):
        blend_input = torch.cat((pred_output, warp_output, target_pose), 1)
@@ -743,9 +744,12 @@ class Blending(nn.Module):
        x3 = self.res1(x2)
        x4 = self.res2(x3)
        x5 = self.res3(x4) 
-       to_linear = x5.view(x5.size()[0],x5.size()[2],x5.size()[3],x5.size()[1])
-       o = self.classify(to_linear)
-       return o.view(o.size()[0],o.size()[3],o.size()[1],o.size()[2])
+       # to_linear = x5.view(x5.size()[0],x5.size()[2],x5.size()[3],x5.size()[1])
+       # to_linear = x5.view(0,2,3,1)
+       # o = self.classify(to_linear)
+       # return o.view(o.size()[0],o.size()[3],o.size()[1],o.size()[2])
+       # return o.permute(0,3,1,2)
+       return x5
 
 ''' ################################
 
