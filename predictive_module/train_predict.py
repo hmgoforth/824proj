@@ -16,6 +16,17 @@ def unNormalize(image_batch, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.22
             im_tens.mul_(s).add_(m)
     return image_batch
 
+def Normalize(image_batch, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]):
+    for image in image_batch:
+        for im_tens, m, s, in zip(image, mean, std):
+            im_tens.div_(s).sub_(m)
+    return image_batch
+
+def adjust_learning_rate(optimizer, epoch):
+    lr = args.lr * (0.1**(epoch // 30))
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+
 def train(args, net, optimizer, train_dataloader, model_save_path):
 
     use_cuda = torch.cuda.is_available()
@@ -58,8 +69,11 @@ def train(args, net, optimizer, train_dataloader, model_save_path):
             #    predicted_images = net(net_input)
 
             #    loss = loss_function.pred_loss(predicted_images, target_image)
-            net_input = torch.cat((images, iuvs, target_iuvs), 1)
+            images_norm = Normalize(images)
+            #target_images_norm = Normalize(images)
+            net_input = torch.cat((images_norm, iuvs, target_iuvs), 1)
             predicted_images = net(net_input)
+            #predicted_unNorm = unNormalize(predicted_images)
             loss = loss_function.pred_loss(predicted_images, target_images)
            
             optimizer.zero_grad()
@@ -73,11 +87,11 @@ def train(args, net, optimizer, train_dataloader, model_save_path):
             if current_step % args.image_log_freq == 0:
                 #predicted_image = unNormalize(predicted_images[2,:,:,:])
                 #target_image = unNormalize(target_images[2, :,:,:])
-                predicted_image = unNormalize(predicted_images[2,:,:,:])
-                target_image = unNormalize(target_images[2,:,:,:])
-                target_iuv = unNormalize(target_iuvs[2,:,:,:])
-                image = unNormalize(images[2,:,:,:])
-                iuv = unNormalize(iuvs[2,:,:,:])
+                predicted_image = predicted_images[2,:,:,:]
+                target_image = target_images[2,:,:,:]
+                target_iuv = target_iuvs[2,:,:,:]
+                image = images[2,:,:,:]
+                iuv = iuvs[2,:,:,:]
                  
                 partgrid = torchvision.utils.make_grid(torch.stack((image, iuv, target_image, target_iuv, predicted_image)), nrow=2, padding=0)
                 tboard.add_image('train/predicted_{:d}'.format(current_step), partgrid, current_step)

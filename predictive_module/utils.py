@@ -16,13 +16,21 @@ def read_image_and_iuv(path):
     ])
     image_path = path + '.jpg'
     #im = Image.open(image_path)
-    im = torch.from_numpy(io.imread(image_path)/256.0).permute(2,0,1).type(torch.cuda.FloatTensor)
-    im = transform(im)
+    im = np.float32(io.imread(image_path)/255.0)
+    im_R, im_G, im_B = im[:,:,0], im[:,:,1], im[:,:,2]
+    im_trans = torch.from_numpy(np.stack((im_R, im_G, im_B), axis=0))
+  
+    im_out = im_trans.type(torch.cuda.FloatTensor)
     iuv_path = path + '_IUV.png'
     #iuv = Image.open(iuv_path)
-    iuv = torch.from_numpy(io.imread(iuv_path)/256.0).permute(2,0,1).type(torch.cuda.FloatTensor)
-    iuv = transform(iuv)
-    return im, iuv
+    iuv_read = np.float32(io.imread(iuv_path))
+    iuv_norm = np.zeros(iuv_read.shape, dtype="float32")
+    iuv_norm[:,:,2] = iuv_read[:,:,2]/24.0
+    iuv_norm[:,:,0:2] = iuv_read[:,:,0:2]/255.0
+    iuv_R, iuv_G, iuv_B = iuv_norm[:,:,0], iuv_norm[:,:,1], iuv_norm[:,:,2]
+    iuv_trans = torch.from_numpy(np.stack((iuv_R, iuv_G, iuv_B), axis=0))
+    iuv_out = iuv_trans.type(torch.cuda.FloatTensor)
+    return im_out, iuv_out
 
 def images_from_texture_and_iuv(texture_map, iuv):
 	# return images corresponding to iuv, which are filled in using texture maps

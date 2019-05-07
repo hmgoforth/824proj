@@ -99,12 +99,15 @@ if __name__ == "__main__":
     if use_cuda:
         predict_model = predict_model.cuda()
 
-    optimizer = optim.Adam(predict_model.parameters(), lr=4e-6, betas=(0.5, 0.999))
+    optimizer = optim.Adam(predict_model.parameters(), lr=4e-3, betas=(0.5, 0.999))
     validation_split = 0.2
     shuffle_dataset = True
     random_seed = 42
 
-    dataset_size = int(25524)
+    dataset = DFDenseData(args.filedict)
+    print(len(dataset))
+
+    dataset_size = len(dataset)
     indices = list(range(dataset_size))
     split = int(np.floor(validation_split * dataset_size))
     np.random.seed(random_seed)
@@ -112,8 +115,7 @@ if __name__ == "__main__":
     train_indices, test_indices = indices[split:], indices[:split]
     train_sampler = SubsetRandomSampler(train_indices)
     test_sampler = SubsetRandomSampler(test_indices)
-    dataset = DFDenseData(args.filedict)
-    dataset[0]
+
     train_dataloader = DataLoader(dataset, batch_size=args.batch, sampler=train_sampler)
     test_dataloader = DataLoader(dataset, batch_size=args.batch, sampler=test_sampler)
     train(args, predict_model, optimizer, train_dataloader, model_save_path) 

@@ -80,17 +80,17 @@ class PredictiveModel(nn.Module):
             nn.Tanh(),
         ) # output: B x 3 x 256 x 256
 
-    def forward(self, dense_image):
-        enc1 = self.enc_block1(dense_image) # B x 64 x 256 x 256
-        x = F.max_pool2d(enc1, 2, stride=2) # B x 64 x 128 x 128
-        enc2 = self.enc_block2(x)           # B x 128 x 128 x 128
-        x = F.max_pool2d(enc2, 2, stride=2) # B x 128 x 64 x 64
-        enc3 = self.enc_block3(x)           # B x 256 x 64 x 64
-        bottle = self.bottle(enc3)             # B x 256 x 64 x 64
-        dec1 = self.deconv1(bottle)# B x 256 x 128 x 128
-        dec2 = self.deconv2(dec1)  # B x 256 x 256 x 256
-        output = self.output(dec2)
-        return output
+    def forward(self, x):
+        x = self.enc_block1(x) # B x 64 x 256 x 256
+        x = F.max_pool2d(x, 2, stride=2) # B x 64 x 128 x 128
+        x = self.enc_block2(x)           # B x 128 x 128 x 128
+        x = F.max_pool2d(x, 2, stride=2) # B x 128 x 64 x 64
+        x = self.enc_block3(x)           # B x 256 x 64 x 64
+        x = self.bottle(x)             # B x 256 x 64 x 64
+        x = self.deconv1(x)# B x 256 x 128 x 128
+        x = self.deconv2(x)  # B x 256 x 256 x 256
+        x = self.output(x)
+        return x
 
 class Blending(nn.Module):
     def __init__(self, im_size=(30, 9, 256, 256), num_features=64):
@@ -108,15 +108,16 @@ class Blending(nn.Module):
         self.res3 = ResidualBlock(64, 64)
         self.classify = nn.Linear(num_features, 3)
         
-    def forward(self, input_mat):
-       x1 = self.conv1(input_mat)
-       x2 = self.conv2(x1)
-       x3 = self.res1(x2)
-       x4 = self.res2(x3)
-       x5 = self.res3(x4) 
-       to_linear = x5.view(x5.size()[0],x5.size()[2],x5.size()[3],x5.size()[1])
-       o = self.classify(to_linear)
-       return o.view(o.size()[0],o.size()[3],o.size()[1],o.size()[2])
+    def forward(self, x):
+       x = self.conv1(x)
+       x = self.conv2(x)
+       x = self.res1(x)
+       x = self.res2(x)
+       x = self.res3(x) 
+       x = x.permute(0, 2, 3, 1)
+       x = self.classify(x)
+       return x.permute(0, 3, 1, 2)
+
 
 if __name__ == '__main__':
     #unet_test_data = torch.randn(10, 9, 256, 256).cuda(async=True)
