@@ -19,3 +19,6 @@ UCF-dataset/preprocessed/
 UCF-dataset/ucf-densepose.tar.gz
 *.pth
 dense_pose_transfer/runs/
+dense_pose_transfer/ucf_filelist.txt
+dense_pose_transfer/ucf_test_list.txt
+dense_pose_transfer/ucf_train_list.txt

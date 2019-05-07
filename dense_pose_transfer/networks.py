@@ -11,6 +11,8 @@ import torch.nn.functional as F
 
 from pdb import set_trace as st
 
+from collections import OrderedDict
+
 import utils
 
 ''' #################
@@ -74,11 +76,11 @@ class DensePoseTransferNet(nn.Module):
         # initialize predictive module
         self.predictive_module = PredictiveModel()
 
-        if pretrained_predictive is not None:
+        if pretrained_predictive_module is not None:
             print('LOADING PRETRAINED PREDICTIVE MODULE')
             self.predictive_module.load_state_dict(torch.load(pretrained_predictive_module))
 
-        # initialize warping module
+        # initialize warping modules
         self.warping_module = InpaintingAutoencoder()
 
         if pretrained_person_inpainter is not None:
@@ -88,8 +90,15 @@ class DensePoseTransferNet(nn.Module):
         # initialize background inpainting module
         self.bg_inpainting = UNet()
         if pretrained_background_inpainter is not None:
-            print('LOADING PRETRAINED BACKGROUND INPAINTER')
-            self.bg_inpainting.load_state_dict(torch.load(pretrained_background_inpainter))
+            print('LOADING PRETRAINED BACKGROUND INPAINTER')        
+            state_dict = torch.load(pretrained_background_inpainter)
+            state_dict_rename = OrderedDict()
+            for k, v in state_dict.items():
+                name = k[7:] # remove `module.`
+                state_dict_rename[name] = v
+
+            self.bg_inpainting.load_state_dict(state_dict_rename)
+
         # initialize blending module
         self.blending_module = Blending()
 
@@ -117,10 +126,10 @@ class DensePoseTransferNet(nn.Module):
         inpainted_bg = self.bg_inpainting(source_im, source_body_mask, source_part_mask)
 
         # blending
-        # blending_result = self.blending_module(predictive_result, warping_result, target_iuv)
+        blending_result = self.blending_module(predictive_result, warping_result, target_iuv)
 
         # final result
-        final_result = utils.combine_foreground_background(warping_result, target_body_mask, inpainted_bg)
+        final_result = utils.combine_foreground_background(blending_result, target_body_mask, inpainted_bg)
 
         return final_result, source_part_mask, target_part_mask
         # final_result:     B x (R, G, B) x 256 x 256
@@ -724,7 +733,7 @@ class Blending(nn.Module):
         self.conv2 = nn.Conv2d(num_features, num_features, 3, 1, 1)
         self.res1 = ResidualBlock(num_features, num_features)
         self.res2 = ResidualBlock(num_features, num_features)
-        self.res3 = ResidualBlock(num_features, num_features, classify=False)
+        self.res3 = ResidualBlock(num_features, num_features)
         self.classify = nn.Linear(num_features, 3)
         
     def forward(self, pred_output, warp_output, target_pose):

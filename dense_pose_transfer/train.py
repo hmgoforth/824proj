@@ -292,7 +292,7 @@ if __name__ == "__main__":
                                           num_epochs=args.num_epochs, 
                                           num_data_loader_workers=args.num_data_loader_workers,
                                           pretrained_person_inpainter=args.pretrained_person_inpainter,
-                                          pretrained_predictive_module=args.pretrained_predictive,
+                                          pretrained_predictive_module=args.pretrained_predictive_module,
                                           pretrained_bg_inpainter=args.pretrained_bg_inpainter)
     # Train Models
     experiment_runner.train()
